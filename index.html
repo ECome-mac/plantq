@@ -200,11 +200,20 @@ function monthOf(dn){return dt(dn).getUTCMonth()+1;}
 function monthsOf(a,b){var r=[],m=a;for(var i=0;i<12;i++){r.push(m);if(m===b)break;m=m%12+1;}return r;}
 
 /* ---------- dati di esempio ---------- */
-var COLORS={agrumi:'#F2C14E',verdi:'#7BC99A',orchidee:'#E895BA',grasse:'#84BFE3',aromatiche:'#B2CF72',fiore:'#BE96E6',orto:'#F0A070'};
+var COLORS={agrumi:'#F2C14E',verdi:'#7BC99A',orchidee:'#E895BA',grasse:'#84BFE3',aromatiche:'#B2CF72',fiore:'#BE96E6',orto:'#F0A070',idro:'#6FD0C6'};
 function B(s){if(!s)return [];return s.split(',').map(function(p){var q=p.split(':'),r=q[0].split('-').map(Number);return{a:r[0],b:r[1]||r[0],d:q[1]==='x'?0:+q[1]};});}
 var uidN=100;function uid(){return 'x'+(uidN++)+Math.random().toString(36).slice(2,5);}
 function ensureTreatment(c){
   if(!c.acts.some(function(a){return /antiparassit/i.test(a.name);}))c.acts.push({id:uid(),name:'Trattamento antiparassitario',bands:[],last:null,note:''});
+}
+function idroClass(){
+  var t=todayDN();
+  function A(name,bands){var a={id:uid(),name:name,bands:B(bands),last:null};
+    if(a.bands.some(function(x){return x.d>0;}))a.last=t;
+    return a;}
+  var c={id:'idro',name:'Piante in idrocoltura',env:'Interno',on:true,color:COLORS.idro,plants:[],
+    acts:[A("Controllare il livello dell'acqua",'1-12:7'),A('Controllare pH ed EC','1-12:7'),A('Cambiare la soluzione nutritiva','3-10:14,11-2:21'),A('Controllo radici e parassiti','1-12:30'),A('Pulire contenitore e supporto','1-12:30'),A('Rinvaso','4:x')]};
+  ensureTreatment(c);return c;
 }
 function seed(){
   var t=todayDN(),k=0;
@@ -222,12 +231,13 @@ function seed(){
    {id:'orto',name:'Frutta e orto',env:'Esterno',plants:['Pomodori'],acts:[A('Annaffiare','4-5:3,6-8:2,9:4'),A('Concimare','3-9:21'),A('Semina o trapianto','3-5:x'),A('Trattamenti antiparassitari','4-9:15'),A('Raccolta','6-10:x'.replace(':x',':7')),A('Potatura e pulizia di fine stagione','11:x')]}
   ];
   C.forEach(function(c){c.on=true;c.color=COLORS[c.id];c.plants=[];ensureTreatment(c);});
-  return {v:2,classes:C,log:[],notes:[],todo:[]};
+  C.push(idroClass());
+  return {v:3,classes:C,log:[],notes:[],todo:[]};
 }
 
 /* ---------- stato ---------- */
 var KEY='plantq-v1';
-function load(){try{var r=localStorage.getItem(KEY);if(r){var o=JSON.parse(r);if(o&&o.classes){if((o.v||1)<2){o.classes.forEach(ensureTreatment);o.v=2;try{localStorage.setItem(KEY,JSON.stringify(o));}catch(e2){}}o.classes.forEach(function(c){if(c.env==='Entrambi')c.env='Interno ed esterno';if(COLORS[c.id])c.color=COLORS[c.id];});return o;}}}catch(e){}return null;}
+function load(){try{var r=localStorage.getItem(KEY);if(r){var o=JSON.parse(r);if(o&&o.classes){if((o.v||1)<2){o.classes.forEach(ensureTreatment);o.v=2;try{localStorage.setItem(KEY,JSON.stringify(o));}catch(e2){}}if((o.v||1)<3){if(!o.classes.some(function(c){return c.id==='idro';}))o.classes.push(idroClass());o.v=3;try{localStorage.setItem(KEY,JSON.stringify(o));}catch(e2){}}o.classes.forEach(function(c){if(c.env==='Entrambi')c.env='Interno ed esterno';if(COLORS[c.id])c.color=COLORS[c.id];});return o;}}}catch(e){}return null;}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}}
 var S=load()||seed();S.todo=S.todo||[];
 var T=todayDN();
