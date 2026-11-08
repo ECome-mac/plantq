@@ -146,6 +146,10 @@ button.stat.on span{color:var(--rose-soft-ink)}
 .go{flex:none;width:44px;height:44px;display:inline-flex;align-items:center;justify-content:center;padding:0;border-radius:50%;cursor:pointer}
 .go.due{background:var(--rose);border:1px solid var(--rose-line);color:var(--rose-ink)}
 .go.fut{background:var(--sunken);border:1px solid transparent;color:var(--rose-text)}
+.envsel{display:flex;gap:24px;flex-wrap:wrap}
+.envsel label{display:inline-flex;align-items:center;gap:10px;min-height:44px;font-size:16px;cursor:pointer}
+.envsel input{-webkit-appearance:none;appearance:none;flex:none;width:24px;height:24px;margin:0;border:2px solid var(--line-strong);border-radius:50%;background:var(--surface)}
+.envsel input:checked{border-color:var(--rose-line);background:radial-gradient(circle,var(--rose-text) 0 6px,var(--surface) 7px)}
 .acc{width:100%;min-height:52px;display:flex;align-items:center;gap:12px;padding:6px 0;border:0;background:transparent;text-align:left}
 .accname{display:block;font-family:var(--display);font-weight:600;font-size:20px;line-height:28px;letter-spacing:-.01em}
 .chev svg{transition:transform .15s}
@@ -194,7 +198,7 @@ function seed(){
    {id:'agrumi',name:'Agrumi',env:'Esterno',plants:['Limone','Mandarino'],acts:[A('Annaffiare','3-5:5,6-8:3,9-10:7,11-2:14'),A('Concimare','3-8:21'),A('Controllo parassiti','3-10:15'),A('Potatura','3:x'),A('Rinvaso','4:x'),A('Ricovero dal freddo','10-11:x'),A("Rimettere all'aperto",'4:x')]},
    {id:'verdi',name:'Piante verdi',env:'Interno',plants:['Ficus','Pothos'],acts:[A('Annaffiare','3-9:7,10-2:14'),A('Concimare','4-9:21'),A('Pulire le foglie','1-12:30'),A('Controllo parassiti','1-12:30'),A('Rinvaso','4:x')]},
    {id:'orchidee',name:'Orchidee',env:'Interno',plants:['Phalaenopsis'],acts:[A('Annaffiare (immersione)','3-10:7,11-2:10'),A('Concimare','3-10:14'),A('Controllo radici e parassiti','1-12:30'),A('Taglio stelo dopo la fioritura','3-6:x'),A('Rinvaso','3-5:x')]},
-   {id:'grasse',name:'Piante grasse',env:'Entrambi',plants:['Aloe','Echeveria'],acts:[A('Annaffiare','4-5:14,6-8:10,9:14'),A('Concimare','4-9:30'),A('Controllo cocciniglia','3-10:30'),A('Rinvaso','4:x'),A('Ricovero dal freddo','10:x'),A("Rimettere all'aperto",'5:x')]},
+   {id:'grasse',name:'Piante grasse',env:'Interno ed esterno',plants:['Aloe','Echeveria'],acts:[A('Annaffiare','4-5:14,6-8:10,9:14'),A('Concimare','4-9:30'),A('Controllo cocciniglia','3-10:30'),A('Rinvaso','4:x'),A('Ricovero dal freddo','10:x'),A("Rimettere all'aperto",'5:x')]},
    {id:'aromatiche',name:'Aromatiche',env:'Esterno',plants:['Rosmarino','Basilico'],acts:[A('Annaffiare','3-5:3,6-8:2,9-10:4,11-2:10'),A('Concimare','4-9:30'),A('Raccolta e cimatura','5-9:14'),A('Semina o trapianto','3-4:x')]},
    {id:'fiore',name:'Piante da fiore',env:'Esterno',plants:['Gerani'],acts:[A('Annaffiare','3-5:3,6-8:2,9-10:4,11-2:10'),A('Concimare','3-9:14'),A('Togliere i fiori appassiti','4-10:7'),A('Trattamento antiparassitario','4-10:15'),A('Potatura','2-3:x'),A('Ricovero invernale','10-11:x')]},
    {id:'orto',name:'Frutta e orto',env:'Esterno',plants:['Pomodori'],acts:[A('Annaffiare','4-5:3,6-8:2,9:4'),A('Concimare','3-9:21'),A('Semina o trapianto','3-5:x'),A('Trattamenti antiparassitari','4-9:15'),A('Raccolta','6-10:x'.replace(':x',':7')),A('Potatura e pulizia di fine stagione','11:x')]}
@@ -205,7 +209,7 @@ function seed(){
 
 /* ---------- stato ---------- */
 var KEY='plantq-v1';
-function load(){try{var r=localStorage.getItem(KEY);if(r){var o=JSON.parse(r);if(o&&o.classes){if((o.v||1)<2){o.classes.forEach(ensureTreatment);o.v=2;try{localStorage.setItem(KEY,JSON.stringify(o));}catch(e2){}}return o;}}}catch(e){}return null;}
+function load(){try{var r=localStorage.getItem(KEY);if(r){var o=JSON.parse(r);if(o&&o.classes){if((o.v||1)<2){o.classes.forEach(ensureTreatment);o.v=2;try{localStorage.setItem(KEY,JSON.stringify(o));}catch(e2){}}o.classes.forEach(function(c){if(c.env==='Entrambi')c.env='Interno ed esterno';});return o;}}}catch(e){}return null;}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}}
 var S=load()||seed();S.todo=S.todo||[];
 var T=todayDN();
@@ -538,7 +542,7 @@ function viewClassi(){
 function viewClasse(c){
   if(!c){UI.cls=null;return viewClassi();}
   var h='<div class="row" style="justify-content:space-between;margin-left:-8px"><button class="btn ghost" data-a="back">'+ic('left',20)+'Piano</button><button class="btn small'+(UI.edit?' primary':'')+'" data-a="editToggle">'+(UI.edit?ic('check',18)+'Fine':ic('edit',18)+'Modifica')+'</button></div>';
-  h+='<div class="row" style="margin-top:12px;align-items:flex-start"><div class="grow"><h1 style="margin-top:2px"><span class="dot" style="display:inline-block;background:'+c.color+';margin-right:10px;vertical-align:middle"></span>'+esc(c.name)+'</h1>'+(UI.edit?'<div class="field" style="margin-top:8px"><label for="clsEnv" class="tiny subtle">Ambiente</label><select class="input" id="clsEnv" data-c="clsEnv" data-k="'+c.id+'">'+['Interno','Esterno','Entrambi'].map(function(e){return '<option'+(c.env===e?' selected':'')+'>'+e+'</option>';}).join('')+'</select></div>':'<p class="small muted" style="margin:2px 0 0">'+esc(c.env)+'</p>')+'</div><button class="switch hit" style="margin-top:14px" role="switch" aria-checked="'+c.on+'" aria-label="Classe attiva" data-a="toggle" data-c="'+c.id+'"></button></div>';
+  h+='<div class="row" style="margin-top:12px;align-items:flex-start"><div class="grow"><h1 style="margin-top:2px"><span class="dot" style="display:inline-block;background:'+c.color+';margin-right:10px;vertical-align:middle"></span>'+esc(c.name)+'</h1>'+(UI.edit?'<div class="field" style="margin-top:8px"><p class="tiny subtle" style="margin:0">Ambiente</p><div class="envsel"><label><input type="checkbox" id="envI" data-c="clsEnv" data-k="'+c.id+'"'+(/interno/i.test(c.env)?' checked':'')+'>Interno</label><label><input type="checkbox" id="envE" data-c="clsEnv" data-k="'+c.id+'"'+(/esterno/i.test(c.env)?' checked':'')+'>Esterno</label></div></div>':'<p class="small muted" style="margin:2px 0 0">'+esc(c.env)+'</p>')+'</div><button class="switch hit" style="margin-top:14px" role="switch" aria-checked="'+c.on+'" aria-label="Classe attiva" data-a="toggle" data-c="'+c.id+'"></button></div>';
   if(!c.on)h+='<div class="banner" style="margin-top:16px">Classe non attiva: le sue attività non compaiono nel calendario. Il registro resta salvato.</div>';
   h+='<div class="section"><p class="eyebrow">Attività</p><div class="stack">';
   c.acts.forEach(function(a){
@@ -625,7 +629,7 @@ function viewSheet(){
     inner='<h2 id="shTitle">Backup dei dati</h2><p class="small muted" style="margin:2px 0 16px">'+(s.prefill?'Copia tutto il testo qui sotto e conservalo in un’app di note.':'Incolla qui il testo del backup. I dati attuali verranno sostituiti.')+'</p><div class="stack"><div class="field"><label for="restoreText">Testo del backup</label><textarea class="input" id="restoreText" style="min-height:140px;font-size:14px">'+esc(s.prefill||'')+'</textarea><p class="hint" id="restoreErr" style="color:var(--error-ink)" hidden>Il testo non è un backup valido.</p></div><div class="row" style="flex-wrap:wrap">'+(s.prefill?'':'<button class="btn primary grow" data-a="restoreSave">Ripristina</button>')+'<button class="btn'+(s.prefill?' primary grow':'')+'" data-a="sheetClose">'+(s.prefill?'Chiudi':'Annulla')+'</button></div></div>';
   }else if(s.type==='newcls'){
     inner='<h2 id="shTitle">Nuova classe</h2><div class="stack" style="margin-top:16px"><div class="field"><label for="ncName">Nome</label><input class="input" id="ncName" placeholder="Es. Bulbose" autocomplete="off"></div>'+
-      '<div class="field"><label for="ncEnv">Ambiente</label><select class="input" id="ncEnv"><option>Interno</option><option>Esterno</option><option>Entrambi</option></select></div>'+
+      '<div class="field"><p class="tiny subtle" style="margin:0">Ambiente</p><div class="envsel"><label><input type="checkbox" id="ncI" checked>Interno</label><label><input type="checkbox" id="ncE">Esterno</label></div></div>'+
       '<div class="row" style="flex-wrap:wrap"><button class="btn primary grow" data-a="newClsSave">Crea classe</button><button class="btn" data-a="sheetClose">Annulla</button></div></div>';
   }
   return '<div class="scrim" data-a="scrim"><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="shTitle">'+inner+'</div></div>';
@@ -714,7 +718,7 @@ var H={
  newClsSave:function(){
    var n=document.getElementById('ncName').value.trim();if(!n)return;
    var pal=['#B8862B','#5E8063','#B07474','#4F8299','#7E8F4E','#8E5F86','#B56A44','#6F6A8F'];
-   S.classes.push({id:uid(),name:n,env:document.getElementById('ncEnv').value,plants:[],acts:[],on:true,color:pal[S.classes.length%pal.length]});
+   S.classes.push({id:uid(),name:n,env:(function(){var ei=document.getElementById('ncI').checked,ee=document.getElementById('ncE').checked;return ei&&ee?'Interno ed esterno':(ee?'Esterno':'Interno');})(),plants:[],acts:[],on:true,color:pal[S.classes.length%pal.length]});
    save();UI.sheet=null;toast('Classe creata. Apri la classe per aggiungere attività.');
  },
  delClsAsk:function(){UI.confirm='delcls';render();},
@@ -746,7 +750,12 @@ document.addEventListener('change',function(e){
   if(t.name==='mode'){var mv=t.value;document.querySelectorAll('[data-modes]').forEach(function(e){e.hidden=e.dataset.modes.split(' ').indexOf(mv)<0;});return;}
   if(t.id==='noteLink'){UI.draftLink=t.value;return;}
   var k=t.dataset&&t.dataset.c;if(!k||!t.dataset.k)return;
-  if(k==='clsEnv'){var cc=classOf(t.dataset.k);if(cc){cc.env=t.value;save();render();}return;}
+  if(k==='clsEnv'){
+    var cc=classOf(t.dataset.k),ci=document.getElementById('envI'),ce=document.getElementById('envE');
+    if(!ci.checked&&!ce.checked){t.checked=true;return;}
+    if(cc){cc.env=(ci.checked&&ce.checked)?'Interno ed esterno':(ci.checked?'Interno':'Esterno');save();render();}
+    return;
+  }
   var a=actOf(classOf(t.dataset.k),t.dataset.t);if(!a)return;
   if(k==='actNote'){a.note=t.value.trim();save();render();return;}
   var b=a.bands[+t.dataset.i];if(!b)return;
