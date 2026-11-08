@@ -139,6 +139,10 @@ textarea.input{min-height:104px;resize:vertical;line-height:24px}
 .stat span{font-size:12px;line-height:16px;color:var(--ink-subtle)}
 .arow{display:flex;align-items:center;gap:12px;padding:12px 0;border-top:1px solid var(--line)}
 .aname{margin:0;font-weight:500}
+.acc{width:100%;min-height:52px;display:flex;align-items:center;gap:12px;padding:6px 0;border:0;background:transparent;text-align:left}
+.accname{display:block;font-family:var(--display);font-weight:600;font-size:20px;line-height:28px;letter-spacing:-.01em}
+.chev svg{transition:transform .15s}
+.chev.up svg{transform:rotate(180deg)}
 .anote{margin:2px 0 0;font-style:italic}
 .printonly{display:none}
 @media print{
@@ -200,7 +204,7 @@ function load(){try{var r=localStorage.getItem(KEY);if(r){var o=JSON.parse(r);if
 function save(){try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}}
 var S=load()||seed();
 var T=todayDN();
-var UI={tab:'oggi',cls:null,edit:false,confirm:null,y:yearOf(T),m:dt(T).getUTCMonth(),sel:T,sheet:null,toast:'',draft:'',draftLink:''};
+var UI={open:{},tab:'oggi',cls:null,edit:false,confirm:null,y:yearOf(T),m:dt(T).getUTCMonth(),sel:T,sheet:null,toast:'',draft:'',draftLink:''};
 
 /* ---------- logica attivita ---------- */
 function inBand(b,m){return b.a<=b.b?(m>=b.a&&m<=b.b):(m>=b.a||m<=b.b);}
@@ -335,7 +339,7 @@ var ICON={
  cal:'<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',
  cls:'<path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"/><path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"/>',
  note:'<path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>',
- left:'<path d="m15 18-6-6 6-6"/>',right:'<path d="m9 18 6-6-6-6"/>',x:'<path d="M18 6 6 18M6 6l12 12"/>',plus:'<path d="M12 5v14M5 12h14"/>',
+ down:'<path d="m6 9 6 6 6-6"/>',left:'<path d="m15 18-6-6 6-6"/>',right:'<path d="m9 18 6-6-6-6"/>',x:'<path d="M18 6 6 18M6 6l12 12"/>',plus:'<path d="M12 5v14M5 12h14"/>',
  check:'<path d="M20 6 9 17l-5-5"/>',edit:'<path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>'
 };
 function ic(n,s){s=s||22;return '<svg width="'+s+'" height="'+s+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+ICON[n]+'</svg>';}
@@ -370,9 +374,10 @@ function viewOggi(){
   h+='<div class="section"><p class="eyebrow">Tutte le attività</p><div class="stack">';
   S.classes.forEach(function(c){if(!c.on)return;
     var acts=c.acts.filter(function(a){return a.on!==false;});
-    h+='<div class="card"><div class="row" style="margin-bottom:4px"><span class="dot" style="background:'+c.color+'"></span><div class="grow"><h2 style="font-size:20px;line-height:28px">'+esc(c.name)+'</h2><p class="tiny subtle" style="margin:0">'+esc(c.env)+(c.plants.length?' · '+esc(c.plants.join(', ')):'')+'</p></div></div>';
-    if(!acts.length)h+='<p class="small muted" style="margin:8px 0 0">Nessuna attività attiva in questa classe.</p>';
-    acts.forEach(function(a){
+    var isOpen=!!UI.open[c.id];
+    h+='<div class="card"><button class="acc" data-a="toggleOpen" data-c="'+c.id+'" aria-expanded="'+isOpen+'" aria-label="'+(isOpen?'Chiudi':'Apri')+' le attività di '+esc(c.name)+'"><span class="dot" style="background:'+c.color+'"></span><span class="grow"><span class="accname">'+esc(c.name)+'</span><span class="tiny subtle" style="display:block">'+acts.length+' attività'+(c.plants.length?' · '+esc(c.plants.join(', ')):'')+'</span></span><span class="chev'+(isOpen?' up':'')+'">'+ic('down',20)+'</span></button>';
+    if(isOpen&&!acts.length)h+='<p class="small muted" style="margin:8px 0 0">Nessuna attività attiva in questa classe.</p>';
+    if(isOpen)acts.forEach(function(a){
       var lg=S.log.filter(function(l){return l.actId===a.id;}).map(function(l){return l.dn;}),ld=lg.length?Math.max.apply(null,lg):null;
       var lastT=ld==null?'Mai registrata':(T-ld===0?'Fatta oggi':(T-ld===1?'Fatta ieri':'Fatta '+(T-ld)+' giorni fa'));
       var per=periodText(a);
@@ -388,7 +393,6 @@ function viewOggi(){
       return '<div class="row" style="padding:12px 0;'+(i?'border-top:1px solid var(--line)':'')+'"><div class="grow"><p style="margin:0;font-weight:500">'+esc(a.name)+' <span class="muted" style="font-weight:400">· '+esc(c.name)+'</span></p><p class="tiny subtle" style="margin:0">'+fmt(l.dn,{day:'numeric',month:'long'})+(l.note?' · '+esc(l.note):'')+'</p></div><button class="btn ghost small" data-a="undo" data-id="'+l.id+'">Annulla</button></div>';}).join('')+'</div>';
   }else h+='<div class="empty">Quando segni un’attività come fatta, la trovi qui.</div>';
   h+='</div>';
-  if(off)h+='<p class="small subtle" style="margin-top:20px">'+off+(off===1?' classe non attiva':' classi non attive')+', le loro attività sono nascoste. <button class="btn ghost small" data-a="tab" data-v="classi" style="min-height:32px;padding:0 6px;text-decoration:underline">Apri Classi</button></p>';
   return h;
 }
 
@@ -544,6 +548,7 @@ function go(tab){UI.tab=tab;UI.cls=null;UI.edit=false;UI.confirm=null;window.scr
 
 /* ---------- eventi ---------- */
 var H={
+ toggleOpen:function(t){UI.open[t.dataset.c]=!UI.open[t.dataset.c];render();},
  print:function(){window.print();},
  backupCopy:function(){var j=JSON.stringify(S);var fail=function(){UI.sheet={type:'restore',prefill:j};render();};try{navigator.clipboard.writeText(j).then(function(){toast('Backup copiato. Incollalo in un’app di note per conservarlo.');},fail);}catch(e){fail();}},
  restoreOpen:function(){UI.sheet={type:'restore',prefill:''};render();},
