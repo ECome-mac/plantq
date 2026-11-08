@@ -417,7 +417,7 @@ function statPanel(wk,mo){
     var late=T-x.dn;
     var when=x.kind==='o'?'entro '+fmt(x.end,{day:'numeric',month:'short'}):(late>0?'in ritardo':(late===0?'oggi':fmt(x.dn,{weekday:'short',day:'numeric'})));
     var btn=x.dn<=T?'<button class="btn small" data-a="doneOpen" data-c="'+x.c.id+'" data-t="'+x.a.id+'"'+(x.todo?' data-todo="'+x.todo.id+'"':'')+'>Fatto</button>':'';
-    return '<div class="row" style="padding:12px 0;'+(i?'border-top:1px solid var(--line)':'')+'"><span class="dot" style="background:'+x.c.color+'"></span><div class="grow"><p style="margin:0;font-weight:500">'+esc(x.a.name)+'</p><p class="tiny subtle" style="margin:0">'+esc(x.c.name)+' · '+esc(when)+(x.kind==='x'?' · pianificata':'')+'</p>'+(x.a.note?'<p class="small muted anote">'+esc(x.a.note)+'</p>':'')+'</div>'+btn+'</div>';
+    return '<div class="row" style="padding:12px 0;'+(i?'border-top:1px solid var(--line)':'')+'"><span class="dot" style="background:'+x.c.color+'"></span><div class="grow"><p class="eyebrow">'+esc(x.c.name)+'</p><p style="margin:0;font-weight:500">'+esc(x.a.name)+'</p><p class="tiny subtle" style="margin:0">'+esc(when)+(x.kind==='x'?' · pianificata':'')+'</p>'+(x.a.note?'<p class="small muted anote">'+esc(x.a.note)+'</p>':'')+'</div>'+btn+'</div>';
   }).join('')+'</div></div>';
   return h;
 }
