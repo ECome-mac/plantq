@@ -437,7 +437,7 @@ function viewCal(){
 
 function viewClassi(){
   if(UI.cls)return viewClasse(classOf(UI.cls));
-  var h='<p class="eyebrow">Tipi di pianta</p><h1>Classi</h1><p class="sub">Spegni una classe quando non hai quel tipo di pianta: le sue attività spariscono dal calendario.</p>';
+  var h='<h1 style="margin-top:0">Pianificazione delle attività</h1><p class="sub">Spegni una classe quando non hai quel tipo di pianta: le sue attività spariscono dal calendario.</p>';
   h+='<div class="section stack">';
   S.classes.forEach(function(c){
     h+='<div class="cls'+(c.on?'':' off')+'"><button class="open" data-a="openCls" data-c="'+c.id+'" aria-label="Apri '+esc(c.name)+'"><span class="dot" style="background:'+c.color+'"></span><span class="grow"><span style="display:block;font-family:var(--display);font-weight:600;font-size:20px;line-height:28px">'+esc(c.name)+'</span><span class="small muted" style="display:block">'+esc(c.env)+' · '+c.plants.length+(c.plants.length===1?' pianta':' piante')+' · '+c.acts.length+' attività</span></span><span class="chev">'+ic('right',20)+'</span></button>'+
@@ -452,7 +452,7 @@ function viewClassi(){
 
 function viewClasse(c){
   if(!c){UI.cls=null;return viewClassi();}
-  var h='<div class="row" style="justify-content:space-between;margin-left:-8px"><button class="btn ghost" data-a="back">'+ic('left',20)+'Classi</button><button class="btn small'+(UI.edit?' primary':'')+'" data-a="editToggle">'+(UI.edit?ic('check',18)+'Fine':ic('edit',18)+'Modifica')+'</button></div>';
+  var h='<div class="row" style="justify-content:space-between;margin-left:-8px"><button class="btn ghost" data-a="back">'+ic('left',20)+'Piano</button><button class="btn small'+(UI.edit?' primary':'')+'" data-a="editToggle">'+(UI.edit?ic('check',18)+'Fine':ic('edit',18)+'Modifica')+'</button></div>';
   h+='<div class="row" style="margin-top:12px;align-items:flex-start"><div class="grow"><p class="eyebrow">'+esc(c.env)+'</p><h1 style="margin-top:2px"><span class="dot" style="display:inline-block;background:'+c.color+';margin-right:10px;vertical-align:middle"></span>'+esc(c.name)+'</h1></div><button class="switch hit" style="margin-top:14px" role="switch" aria-checked="'+c.on+'" aria-label="Classe attiva" data-a="toggle" data-c="'+c.id+'"></button></div>';
   if(!c.on)h+='<div class="banner" style="margin-top:16px">Classe non attiva: le sue attività non compaiono nel calendario. Piante e registro restano salvati.</div>';
   h+='<div class="section"><p class="eyebrow">Piante</p><div class="chips">';
@@ -532,7 +532,7 @@ function viewSheet(){
 }
 
 function tabbar(){
-  var tabs=[['oggi','Home','home'],['cal','Calendario','cal'],['classi','Classi','cls'],['note','Note','note']];
+  var tabs=[['oggi','Home','home'],['cal','Calendario','cal'],['classi','Piano','cls'],['note','Note','note']];
   return '<div class="tabbar"><nav aria-label="Sezioni">'+tabs.map(function(t){return '<button class="tab" data-a="tab" data-v="'+(t[0]==='cal'?'cal':t[0])+'"'+(UI.tab===t[0]?' aria-current="page"':'')+'>'+ic(t[2])+t[1]+'</button>';}).join('')+'</nav></div>';
 }
 
