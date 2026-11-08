@@ -120,6 +120,7 @@ textarea.input{min-height:104px;resize:vertical;line-height:24px}
 .bandedit{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:10px 0;border-top:1px solid var(--line)}
 .bandedit select,.bandedit input{min-height:44px;padding:6px 8px;border:1px solid var(--line-strong);border-radius:10px;background:var(--surface);font-size:16px}
 .bandedit input{width:72px}
+.bandedit select[data-c="bandF"]{flex:1;min-width:150px}
 .banner{padding:12px 16px;border-radius:10px;background:var(--warning-soft);color:var(--warning-ink);font-size:14px;line-height:22px}
 .banner.info{background:var(--sunken);color:var(--ink-muted)}
 
@@ -245,13 +246,16 @@ function occurrences(act,A,Bd){
 }
 function classOf(id){return S.classes.find(function(c){return c.id===id;});}
 function actOf(c,id){return c.acts.find(function(a){return a.id===id;});}
+var FREQ=[[7,'ogni 1 settimana'],[14,'ogni 2 settimane'],[30,'ogni 1 mese'],[60,'ogni 2 mesi'],[0,'1 volta nel periodo']];
+function freqText(d){for(var i=0;i<FREQ.length;i++)if(FREQ[i][0]===d)return FREQ[i][1];return 'ogni '+d+' giorni';}
+function freqOptions(d){var s='',f=false;FREQ.forEach(function(x){if(x[0]===d)f=true;s+='<option value="'+x[0]+'"'+(x[0]===d?' selected':'')+'>'+x[1]+'</option>';});if(!f)s='<option value="'+d+'" selected>'+freqText(d)+'</option>'+s;return s;}
 function bandText(b){
   var r=MON[b.a-1]+(b.b!==b.a?'–'+MON[b.b-1]:'');
-  return r+(b.d>0?' · ogni '+b.d+' gg':' · 1 volta');
+  return r+' · '+freqText(b.d);
 }
 function periodText(act){
   var b=bandAtRaw(act,T);
-  if(b)return b.d>0?'Ogni '+b.d+' giorni':'Una volta nel periodo '+MON[b.a-1]+(b.b!==b.a?'–'+MON[b.b-1]:'');
+  if(b)return b.d>0?(freqText(b.d).charAt(0).toUpperCase()+freqText(b.d).slice(1)):'Una volta nel periodo '+MON[b.a-1]+(b.b!==b.a?'–'+MON[b.b-1]:'');
   return '';
 }
 function markDone(clsId,actId,dn,note){
@@ -457,13 +461,13 @@ function viewClasse(c){
     var aoff=a.on===false;
     h+='<div class="card'+(aoff?' off':'')+'"><div class="row"><h3 class="grow">'+esc(a.name)+'</h3><button class="switch hit" role="switch" aria-checked="'+(!aoff)+'" aria-label="Attività '+esc(a.name)+' attiva" data-a="toggleAct" data-c="'+c.id+'" data-t="'+a.id+'"></button></div>'+(UI.edit?'<div class="field" style="margin-top:8px"><label for="n'+a.id+'" class="tiny subtle">Nota dell’attività</label><input class="input" id="n'+a.id+'" value="'+esc(a.note||'')+'" placeholder="Es. concime liquido, 1 tappo in 1 litro" autocomplete="off" data-c="actNote" data-k="'+c.id+'" data-t="'+a.id+'"></div>':(a.note?'<p class="small muted anote">'+esc(a.note)+'</p>':''))+(aoff?'<p class="tiny subtle" style="margin:4px 0 0">Non attiva: non compare nel calendario. Lo storico resta salvato.</p>':'')+'<div style="margin-top:6px">';
     a.bands.forEach(function(b,i){
-      if(!UI.edit){h+='<div class="band"><span>'+esc(bandText(b).split(' ·')[0])+'</span><span class="muted">'+(b.d>0?'ogni '+b.d+' giorni':'1 volta')+'</span></div>';}
+      if(!UI.edit){h+='<div class="band"><span>'+esc(bandText(b).split(' ·')[0])+'</span><span class="muted">'+freqText(b.d)+'</span></div>';}
       else{
         var id='b'+a.id+i;
-        h+='<div class="bandedit"><select aria-label="Mese di inizio" id="'+id+'a" data-c="bandA" data-k="'+c.id+'" data-t="'+a.id+'" data-i="'+i+'">'+MON.map(function(m,k){return '<option value="'+(k+1)+'"'+(b.a===k+1?' selected':'')+'>'+m+'</option>';}).join('')+'</select>'+
-          '<span class="muted">–</span><select aria-label="Mese di fine" id="'+id+'b" data-c="bandB" data-k="'+c.id+'" data-t="'+a.id+'" data-i="'+i+'">'+MON.map(function(m,k){return '<option value="'+(k+1)+'"'+(b.b===k+1?' selected':'')+'>'+m+'</option>';}).join('')+'</select>'+
-          '<select aria-label="Tipo di periodicità" id="'+id+'t" data-c="bandT" data-k="'+c.id+'" data-t="'+a.id+'" data-i="'+i+'"><option value="r"'+(b.d>0?' selected':'')+'>ogni</option><option value="o"'+(b.d===0?' selected':'')+'>1 volta</option></select>'+
-          (b.d>0?'<input type="number" inputmode="numeric" min="1" max="365" aria-label="Giorni" id="'+id+'n" value="'+b.d+'" data-c="bandN" data-k="'+c.id+'" data-t="'+a.id+'" data-i="'+i+'"><span class="muted small">gg</span>':'')+
+        h+='<div class="bandedit"><span class="muted small">Da</span><select aria-label="Mese di inizio" id="'+id+'a" data-c="bandA" data-k="'+c.id+'" data-t="'+a.id+'" data-i="'+i+'">'+MON.map(function(m,k){return '<option value="'+(k+1)+'"'+(b.a===k+1?' selected':'')+'>'+m+'</option>';}).join('')+'</select>'+
+          '<span class="muted small">a</span><select aria-label="Mese di fine" id="'+id+'b" data-c="bandB" data-k="'+c.id+'" data-t="'+a.id+'" data-i="'+i+'">'+MON.map(function(m,k){return '<option value="'+(k+1)+'"'+(b.b===k+1?' selected':'')+'>'+m+'</option>';}).join('')+'</select>'+
+          '<select aria-label="Ogni quanto" id="'+id+'f" data-c="bandF" data-k="'+c.id+'" data-t="'+a.id+'" data-i="'+i+'">'+freqOptions(b.d)+'</select>'+
+          ''+
           '<button class="iconbtn sm" data-a="delBand" data-c="'+c.id+'" data-t="'+a.id+'" data-i="'+i+'" aria-label="Rimuovi fascia">'+ic('x',16)+'</button></div>';
       }
     });
@@ -611,7 +615,7 @@ document.addEventListener('change',function(e){
   var b=a.bands[+t.dataset.i];if(!b)return;
   if(k==='bandA')b.a=+t.value;
   else if(k==='bandB')b.b=+t.value;
-  else if(k==='bandT')b.d=t.value==='o'?0:(b.d||14);
+  else if(k==='bandF')b.d=parseInt(t.value,10)||0;
   else if(k==='bandN'){var n=Math.max(1,Math.min(365,parseInt(t.value,10)||1));b.d=n;}
   save();render();
 });
