@@ -177,8 +177,11 @@ function monthsOf(a,b){var r=[],m=a;for(var i=0;i<12;i++){r.push(m);if(m===b)bre
 
 /* ---------- dati di esempio ---------- */
 var COLORS={agrumi:'#B8862B',verdi:'#5E8063',orchidee:'#B07474',grasse:'#4F8299',aromatiche:'#7E8F4E',fiore:'#8E5F86',orto:'#B56A44'};
-function B(s){return s.split(',').map(function(p){var q=p.split(':'),r=q[0].split('-').map(Number);return{a:r[0],b:r[1]||r[0],d:q[1]==='x'?0:+q[1]};});}
+function B(s){if(!s)return [];return s.split(',').map(function(p){var q=p.split(':'),r=q[0].split('-').map(Number);return{a:r[0],b:r[1]||r[0],d:q[1]==='x'?0:+q[1]};});}
 var uidN=100;function uid(){return 'x'+(uidN++)+Math.random().toString(36).slice(2,5);}
+function ensureTreatment(c){
+  if(!c.acts.some(function(a){return /antiparassit/i.test(a.name);}))c.acts.push({id:uid(),name:'Trattamento antiparassitario',bands:[],last:null,note:''});
+}
 function seed(){
   var t=todayDN(),k=0;
   function A(name,bands){var a={id:uid(),name:name,bands:B(bands),last:null};
@@ -194,13 +197,13 @@ function seed(){
    {id:'fiore',name:'Piante da fiore',env:'Esterno',plants:['Gerani'],acts:[A('Annaffiare','3-5:3,6-8:2,9-10:4,11-2:10'),A('Concimare','3-9:14'),A('Togliere i fiori appassiti','4-10:7'),A('Trattamento antiparassitario','4-10:15'),A('Potatura','2-3:x'),A('Ricovero invernale','10-11:x')]},
    {id:'orto',name:'Frutta e orto',env:'Esterno',plants:['Pomodori'],acts:[A('Annaffiare','4-5:3,6-8:2,9:4'),A('Concimare','3-9:21'),A('Semina o trapianto','3-5:x'),A('Trattamenti antiparassitari','4-9:15'),A('Raccolta','6-10:x'.replace(':x',':7')),A('Potatura e pulizia di fine stagione','11:x')]}
   ];
-  C.forEach(function(c){c.on=true;c.color=COLORS[c.id];c.plants=[];});
-  return {classes:C,log:[],notes:[]};
+  C.forEach(function(c){c.on=true;c.color=COLORS[c.id];c.plants=[];ensureTreatment(c);});
+  return {v:2,classes:C,log:[],notes:[]};
 }
 
 /* ---------- stato ---------- */
 var KEY='plantq-v1';
-function load(){try{var r=localStorage.getItem(KEY);if(r){var o=JSON.parse(r);if(o&&o.classes)return o;}}catch(e){}return null;}
+function load(){try{var r=localStorage.getItem(KEY);if(r){var o=JSON.parse(r);if(o&&o.classes){if((o.v||1)<2){o.classes.forEach(ensureTreatment);o.v=2;try{localStorage.setItem(KEY,JSON.stringify(o));}catch(e2){}}return o;}}}catch(e){}return null;}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}}
 var S=load()||seed();
 var T=todayDN();
@@ -381,7 +384,7 @@ function viewOggi(){
       var lg=S.log.filter(function(l){return l.actId===a.id;}).map(function(l){return l.dn;}),ld=lg.length?Math.max.apply(null,lg):null;
       var lastT=ld==null?'Mai registrata':(T-ld===0?'Fatta oggi':(T-ld===1?'Fatta ieri':'Fatta '+(T-ld)+' giorni fa'));
       var per=periodText(a);
-      h+='<div class="arow"><div class="grow"><p class="aname">'+esc(a.name)+'</p>'+(a.note?'<p class="small muted anote">'+esc(a.note)+'</p>':'')+'<p class="tiny subtle" style="margin:2px 0 0">'+esc((per||'Fuori periodo')+' · '+lastT)+'</p></div><button class="btn small" data-a="doneOpen" data-c="'+c.id+'" data-t="'+a.id+'">Fatto</button></div>';
+      h+='<div class="arow"><div class="grow"><p class="aname">'+esc(a.name)+'</p>'+(a.note?'<p class="small muted anote">'+esc(a.note)+'</p>':'')+'<p class="tiny subtle" style="margin:2px 0 0">'+esc((per||(a.bands.length?'Fuori periodo':'Su richiesta'))+' · '+lastT)+'</p></div><button class="btn small" data-a="doneOpen" data-c="'+c.id+'" data-t="'+a.id+'">Fatto</button></div>';
     });
     h+='</div>';
   });
@@ -475,7 +478,7 @@ function viewClasse(c){
           '<button class="iconbtn sm" data-a="delBand" data-c="'+c.id+'" data-t="'+a.id+'" data-i="'+i+'" aria-label="Rimuovi fascia">'+ic('x',16)+'</button></div>';
       }
     });
-    if(!a.bands.length)h+='<p class="small muted" style="margin:0">Nessuna fascia: l’attività non compare nel calendario.</p>';
+    if(!a.bands.length)h+='<p class="small muted" style="margin:0">Su richiesta: la registri quando la fai e non compare nel calendario.</p>';
     if(UI.edit)h+='<button class="btn ghost small" data-a="addBand" data-c="'+c.id+'" data-t="'+a.id+'" style="margin-top:4px">'+ic('plus',16)+'Aggiungi fascia di mesi</button>';
     if(UI.edit){var nl=S.log.filter(function(l){return l.actId===a.id;}).length;
       h+='<hr class="divider" style="margin:12px 0">'+(UI.confirm==='delact:'+a.id?'<p class="small" style="margin:0 0 8px">'+(nl?'Eliminando questa attività perdi anche le '+nl+(nl===1?' registrazione':' registrazioni')+'.':'Eliminando questa attività non perdi nessuna registrazione.')+' Per tenere lo storico usa l’interruttore e disattivala.</p><div class="row" style="flex-wrap:wrap"><button class="btn danger small" data-a="delActYes" data-c="'+c.id+'" data-t="'+a.id+'">Conferma: elimina</button><button class="btn ghost small" data-a="confirmNo">Annulla</button></div>':'<button class="btn danger small" data-a="delActAsk" data-t="'+a.id+'">Elimina attività</button>');}
