@@ -137,6 +137,9 @@ textarea.input{min-height:104px;resize:vertical;line-height:24px}
 .stat{padding:12px;border:1px solid var(--line);border-radius:16px;background:var(--surface);display:flex;flex-direction:column;gap:2px}
 .stat b{font-family:var(--display);font-size:28px;line-height:32px;font-weight:600;color:var(--rose-text)}
 .stat span{font-size:12px;line-height:16px;color:var(--ink-subtle)}
+button.stat{font:inherit;text-align:left;color:inherit;cursor:pointer;min-height:76px;align-items:flex-start;justify-content:space-between}
+button.stat.on{background:var(--rose-soft);border-color:var(--rose-line)}
+button.stat.on span{color:var(--rose-soft-ink)}
 .arow{display:flex;align-items:center;gap:12px;padding:12px 0;border-top:1px solid var(--line)}
 .aname{margin:0;font-weight:500}
 .acc{width:100%;min-height:52px;display:flex;align-items:center;gap:12px;padding:6px 0;border:0;background:transparent;text-align:left}
@@ -207,7 +210,7 @@ function load(){try{var r=localStorage.getItem(KEY);if(r){var o=JSON.parse(r);if
 function save(){try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}}
 var S=load()||seed();
 var T=todayDN();
-var UI={open:{},tab:'oggi',cls:null,edit:false,confirm:null,y:yearOf(T),m:dt(T).getUTCMonth(),sel:T,sheet:null,toast:'',draft:'',draftLink:''};
+var UI={open:{},stat:null,tab:'oggi',cls:null,edit:false,confirm:null,y:yearOf(T),m:dt(T).getUTCMonth(),sel:T,sheet:null,toast:'',draft:'',draftLink:''};
 
 /* ---------- logica attivita ---------- */
 function inBand(b,m){return b.a<=b.b?(m>=b.a&&m<=b.b):(m>=b.a||m<=b.b);}
@@ -360,11 +363,45 @@ function itemCard(it,showBtn){
     '<div class="row" style="margin-top:12px;justify-content:space-between">'+st+(showBtn?'<button class="btn primary small" data-a="doneOpen" data-c="'+it.c.id+'" data-t="'+it.a.id+'">'+ic('check',18)+'Fatto</button>':'')+'</div></div>';
 }
 
+function weekEndDN(){var i=(dt(T).getUTCDay()+6)%7;return T+(6-i);}
+function monthEndDN(){return dnOf(yearOf(T),dt(T).getUTCMonth()+1,0);}
+function dueUntil(end){
+  var out=[],y=yearOf(T);
+  S.classes.forEach(function(c){if(!c.on)return;c.acts.forEach(function(a){
+    if(a.on===false)return;
+    var cur=nextDue(a),g=0;
+    while(cur!=null&&cur<=end&&g++<400){out.push({c:c,a:a,dn:cur,kind:'p'});cur=nextAfter(a,cur);}
+    a.bands.forEach(function(b){
+      if(b.d!==0)return;
+      [y-1,y,y+1].forEach(function(yy){windows(b,yy).forEach(function(w){
+        if(w[1]<T||doneIn(a,w[0],w[1]))return;
+        var due=Math.max(T,w[0]);
+        if(due<=end&&!out.some(function(o){return o.a===a&&o.kind==='o'&&o.end===w[1];}))out.push({c:c,a:a,dn:due,kind:'o',end:w[1]});
+      });});
+    });
+  });});
+  out.sort(function(x,z){return x.dn-z.dn;});
+  return out;
+}
+function statPanel(wk,mo){
+  if(!UI.stat)return '';
+  var list=UI.stat==='week'?wk:mo,title=UI.stat==='week'?'Da fare questa settimana':'Da fare questo mese';
+  var h='<div class="section" style="margin-top:20px"><p class="eyebrow">'+title+'</p>';
+  if(!list.length)return h+'<div class="empty">Nessuna attività in questo periodo.</div></div>';
+  h+='<div class="card" style="padding:4px 16px">'+list.map(function(x,i){
+    var late=T-x.dn;
+    var when=x.kind==='o'?'entro '+fmt(x.end,{day:'numeric',month:'short'}):(late>0?'in ritardo':(late===0?'oggi':fmt(x.dn,{weekday:'short',day:'numeric'})));
+    var btn=x.dn<=T?'<button class="btn small" data-a="doneOpen" data-c="'+x.c.id+'" data-t="'+x.a.id+'">Fatto</button>':'';
+    return '<div class="row" style="padding:12px 0;'+(i?'border-top:1px solid var(--line)':'')+'"><span class="dot" style="background:'+x.c.color+'"></span><div class="grow"><p style="margin:0;font-weight:500">'+esc(x.a.name)+'</p>'+(x.a.note?'<p class="small muted anote">'+esc(x.a.note)+'</p>':'')+'<p class="tiny subtle" style="margin:0">'+esc(x.c.name)+' · '+esc(when)+'</p></div>'+btn+'</div>';
+  }).join('')+'</div></div>';
+  return h;
+}
 function viewOggi(){
   var it=todayItems(),n=it.late.length,off=S.classes.filter(function(c){return !c.on;}).length;
   var hr=new Date().getHours(),hello=hr<12?'Buongiorno':(hr<18?'Buon pomeriggio':'Buonasera'),nact=S.classes.filter(function(c){return c.on;}).length;
+  var wk=dueUntil(weekEndDN()),mo=dueUntil(monthEndDN());
   var h='<section class="hero"><p class="eyebrow">'+esc(dateLine(T))+'</p><h1>'+hello+'</h1>';
-  h+='<p class="sub">'+(n?'Oggi hai '+n+(n===1?' attività da fare.':' attività da fare.'):'Oggi non c’è nulla da fare.')+'</p><div class="stats"><div class="stat"><b>'+n+'</b><span>da fare oggi</span></div><div class="stat"><b>'+it.soon.length+'</b><span>in arrivo, 7 giorni</span></div><div class="stat"><b>'+nact+'</b><span>classi attive</span></div></div></section>';
+  h+='<p class="sub">'+(n?'Oggi hai '+n+(n===1?' attività da fare.':' attività da fare.'):'Oggi non c’è nulla da fare.')+'</p><div class="stats"><button class="stat'+(UI.stat==='week'?' on':'')+'" data-a="statOpen" data-v="week" aria-expanded="'+(UI.stat==='week')+'"><b>'+wk.length+'</b><span>questa settimana</span></button><button class="stat'+(UI.stat==='month'?' on':'')+'" data-a="statOpen" data-v="month" aria-expanded="'+(UI.stat==='month')+'"><b>'+mo.length+'</b><span>questo mese</span></button><div class="stat"><b>'+nact+'</b><span>classi attive</span></div></div></section>'+statPanel(wk,mo);
   h+='<div class="section"><p class="eyebrow">Da fare oggi</p><div class="stack">';
   if(n)h+=it.late.map(function(x){return itemCard(x,true);}).join('');
   else h+='<div class="empty">Tutto in ordine. Le prossime attività sono qui sotto.</div>';
@@ -551,6 +588,7 @@ function go(tab){UI.tab=tab;UI.cls=null;UI.edit=false;UI.confirm=null;window.scr
 
 /* ---------- eventi ---------- */
 var H={
+ statOpen:function(t){UI.stat=(UI.stat===t.dataset.v)?null:t.dataset.v;render();},
  toggleOpen:function(t){UI.open[t.dataset.c]=!UI.open[t.dataset.c];render();},
  print:function(){window.print();},
  backupCopy:function(){var j=JSON.stringify(S);var fail=function(){UI.sheet={type:'restore',prefill:j};render();};try{navigator.clipboard.writeText(j).then(function(){toast('Backup copiato. Incollalo in un’app di note per conservarlo.');},fail);}catch(e){fail();}},
