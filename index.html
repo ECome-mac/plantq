@@ -132,6 +132,13 @@ textarea.input{min-height:104px;resize:vertical;line-height:24px}
 .divider{height:1px;background:var(--line);border:0;margin:16px 0}
 @media (prefers-reduced-motion:reduce){.switch::after{transition:none}}
 [hidden]{display:none!important}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:16px}
+.stat{padding:12px;border:1px solid var(--line);border-radius:16px;background:var(--surface);display:flex;flex-direction:column;gap:2px}
+.stat b{font-family:var(--display);font-size:28px;line-height:32px;font-weight:600;color:var(--rose-text)}
+.stat span{font-size:12px;line-height:16px;color:var(--ink-subtle)}
+.arow{display:flex;align-items:center;gap:12px;padding:12px 0;border-top:1px solid var(--line)}
+.aname{margin:0;font-weight:500}
+.anote{margin:2px 0 0;font-style:italic}
 .printonly{display:none}
 @media print{
   html,body{background:#fff!important}
@@ -244,7 +251,7 @@ function bandText(b){
 }
 function periodText(act){
   var b=bandAtRaw(act,T);
-  if(b)return b.d>0?'Ogni '+b.d+' giorni':'Una volta nel periodo '+MON[b.a-1]+'–'+MON[b.b-1];
+  if(b)return b.d>0?'Ogni '+b.d+' giorni':'Una volta nel periodo '+MON[b.a-1]+(b.b!==b.a?'–'+MON[b.b-1]:'');
   return '';
 }
 function markDone(clsId,actId,dn,note){
@@ -319,6 +326,7 @@ function applyProposal(p){
 /* ---------- viste ---------- */
 function esc(s){return String(s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
 var ICON={
+ home:'<path d="m3 11 9-8 9 8"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/>',
  oggi:'<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m22 4-10 10.01-3-3"/>',
  cal:'<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',
  cls:'<path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"/><path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"/>',
@@ -337,15 +345,16 @@ function itemCard(it,showBtn){
   else if(late===0){st='<span class="pill rose">Oggi</span>';}
   else{st='<span class="pill neutral">'+fmt(it.dn,{weekday:'short',day:'numeric',month:'short'})+'</span>';}
   var sub=it.kind==='o'?'Una volta nel periodo '+bandText(it.band).split(' ·')[0]:periodText(it.a);
-  return '<div class="card"><div class="row"><span class="dot" style="background:'+it.c.color+'"></span><div class="grow"><p class="eyebrow">'+esc(it.c.name)+'</p><h3>'+esc(it.a.name)+'</h3><p class="small muted" style="margin:2px 0 0">'+esc(sub)+'</p></div></div>'+
+  return '<div class="card"><div class="row"><span class="dot" style="background:'+it.c.color+'"></span><div class="grow"><p class="eyebrow">'+esc(it.c.name)+'</p><h3>'+esc(it.a.name)+'</h3>'+(it.a.note?'<p class="small muted anote">'+esc(it.a.note)+'</p>':'')+'<p class="small muted" style="margin:2px 0 0">'+esc(sub)+'</p></div></div>'+
     '<div class="row" style="margin-top:12px;justify-content:space-between">'+st+(showBtn?'<button class="btn primary small" data-a="doneOpen" data-c="'+it.c.id+'" data-t="'+it.a.id+'">'+ic('check',18)+'Fatto</button>':'')+'</div></div>';
 }
 
 function viewOggi(){
   var it=todayItems(),n=it.late.length,off=S.classes.filter(function(c){return !c.on;}).length;
-  var h='<p class="eyebrow">'+esc(dateLine(T))+'</p><h1>Oggi</h1>';
-  h+='<p class="sub">'+(n?n+(n===1?' attività da fare':' attività da fare'):'Niente da fare oggi.')+'</p>';
-  h+='<div class="section"><div class="stack">';
+  var hr=new Date().getHours(),hello=hr<12?'Buongiorno':(hr<18?'Buon pomeriggio':'Buonasera'),nact=S.classes.filter(function(c){return c.on;}).length;
+  var h='<section class="hero"><p class="eyebrow">'+esc(dateLine(T))+'</p><h1>'+hello+'</h1>';
+  h+='<p class="sub">'+(n?'Oggi hai '+n+(n===1?' attività da fare.':' attività da fare.'):'Oggi non c’è nulla da fare.')+'</p><div class="stats"><div class="stat"><b>'+n+'</b><span>da fare oggi</span></div><div class="stat"><b>'+it.soon.length+'</b><span>in arrivo, 7 giorni</span></div><div class="stat"><b>'+nact+'</b><span>classi attive</span></div></div></section>';
+  h+='<div class="section"><p class="eyebrow">Da fare oggi</p><div class="stack">';
   if(n)h+=it.late.map(function(x){return itemCard(x,true);}).join('');
   else h+='<div class="empty">Tutto in ordine. Le prossime attività sono qui sotto.</div>';
   h+='</div></div>';
@@ -354,6 +363,20 @@ function viewOggi(){
     h+=it.soon.map(function(x,i){return '<div class="row" style="padding:12px 0;'+(i?'border-top:1px solid var(--line)':'')+'"><span class="dot" style="background:'+x.c.color+'"></span><div class="grow"><p style="margin:0;font-weight:500">'+esc(x.a.name)+'</p><p class="tiny subtle" style="margin:0">'+esc(x.c.name)+'</p></div><span class="small muted">'+fmt(x.dn,{weekday:'short',day:'numeric'})+'</span></div>';}).join('');
     h+='</div></div>';
   }
+  h+='<div class="section"><p class="eyebrow">Tutte le attività</p><div class="stack">';
+  S.classes.forEach(function(c){if(!c.on)return;
+    var acts=c.acts.filter(function(a){return a.on!==false;});
+    h+='<div class="card"><div class="row" style="margin-bottom:4px"><span class="dot" style="background:'+c.color+'"></span><div class="grow"><h2 style="font-size:20px;line-height:28px">'+esc(c.name)+'</h2><p class="tiny subtle" style="margin:0">'+esc(c.env)+(c.plants.length?' · '+esc(c.plants.join(', ')):'')+'</p></div></div>';
+    if(!acts.length)h+='<p class="small muted" style="margin:8px 0 0">Nessuna attività attiva in questa classe.</p>';
+    acts.forEach(function(a){
+      var lg=S.log.filter(function(l){return l.actId===a.id;}).map(function(l){return l.dn;}),ld=lg.length?Math.max.apply(null,lg):null;
+      var lastT=ld==null?'Mai registrata':(T-ld===0?'Fatta oggi':(T-ld===1?'Fatta ieri':'Fatta '+(T-ld)+' giorni fa'));
+      var per=periodText(a);
+      h+='<div class="arow"><div class="grow"><p class="aname">'+esc(a.name)+'</p>'+(a.note?'<p class="small muted anote">'+esc(a.note)+'</p>':'')+'<p class="tiny subtle" style="margin:2px 0 0">'+esc((per||'Fuori periodo')+' · '+lastT)+'</p></div><button class="btn small" data-a="doneOpen" data-c="'+c.id+'" data-t="'+a.id+'">Fatto</button></div>';
+    });
+    h+='</div>';
+  });
+  h+='</div></div>';
   var recent=S.log.slice(-5).reverse();
   h+='<div class="section"><p class="eyebrow">Registro, ultime svolte</p>';
   if(recent.length){
@@ -432,7 +455,7 @@ function viewClasse(c){
   h+='<div class="section"><p class="eyebrow">Attività per mese</p><div class="stack">';
   c.acts.forEach(function(a){
     var aoff=a.on===false;
-    h+='<div class="card'+(aoff?' off':'')+'"><div class="row"><h3 class="grow">'+esc(a.name)+'</h3><button class="switch hit" role="switch" aria-checked="'+(!aoff)+'" aria-label="Attività '+esc(a.name)+' attiva" data-a="toggleAct" data-c="'+c.id+'" data-t="'+a.id+'"></button></div>'+(aoff?'<p class="tiny subtle" style="margin:4px 0 0">Non attiva: non compare nel calendario. Lo storico resta salvato.</p>':'')+'<div style="margin-top:6px">';
+    h+='<div class="card'+(aoff?' off':'')+'"><div class="row"><h3 class="grow">'+esc(a.name)+'</h3><button class="switch hit" role="switch" aria-checked="'+(!aoff)+'" aria-label="Attività '+esc(a.name)+' attiva" data-a="toggleAct" data-c="'+c.id+'" data-t="'+a.id+'"></button></div>'+(UI.edit?'<div class="field" style="margin-top:8px"><label for="n'+a.id+'" class="tiny subtle">Nota dell’attività</label><input class="input" id="n'+a.id+'" value="'+esc(a.note||'')+'" placeholder="Es. concime liquido, 1 tappo in 1 litro" autocomplete="off" data-c="actNote" data-k="'+c.id+'" data-t="'+a.id+'"></div>':(a.note?'<p class="small muted anote">'+esc(a.note)+'</p>':''))+(aoff?'<p class="tiny subtle" style="margin:4px 0 0">Non attiva: non compare nel calendario. Lo storico resta salvato.</p>':'')+'<div style="margin-top:6px">';
     a.bands.forEach(function(b,i){
       if(!UI.edit){h+='<div class="band"><span>'+esc(bandText(b).split(' ·')[0])+'</span><span class="muted">'+(b.d>0?'ogni '+b.d+' giorni':'1 volta')+'</span></div>';}
       else{
@@ -501,7 +524,7 @@ function viewSheet(){
 }
 
 function tabbar(){
-  var tabs=[['oggi','Oggi','oggi'],['cal','Calendario','cal'],['classi','Classi','cls'],['note','Note','note']];
+  var tabs=[['oggi','Home','home'],['cal','Calendario','cal'],['classi','Classi','cls'],['note','Note','note']];
   return '<div class="tabbar"><nav aria-label="Sezioni">'+tabs.map(function(t){return '<button class="tab" data-a="tab" data-v="'+(t[0]==='cal'?'cal':t[0])+'"'+(UI.tab===t[0]?' aria-current="page"':'')+'>'+ic(t[2])+t[1]+'</button>';}).join('')+'</nav></div>';
 }
 
@@ -584,6 +607,7 @@ document.addEventListener('change',function(e){
   if(t.id==='noteLink'){UI.draftLink=t.value;return;}
   var k=t.dataset&&t.dataset.c;if(!k||!t.dataset.k)return;
   var a=actOf(classOf(t.dataset.k),t.dataset.t);if(!a)return;
+  if(k==='actNote'){a.note=t.value.trim();save();render();return;}
   var b=a.bands[+t.dataset.i];if(!b)return;
   if(k==='bandA')b.a=+t.value;
   else if(k==='bandB')b.b=+t.value;
