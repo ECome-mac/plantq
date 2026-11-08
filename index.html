@@ -424,7 +424,7 @@ function statPanel(wk,nx,mo,sel){
     else if(late>0)st='<span class="pill late">In ritardo di '+late+(late===1?' giorno':' giorni')+'</span>';
     else if(late===0)st='<span class="pill rose">Oggi</span>';
     else st='<span class="pill '+(x.dn<=lim?'warn':'ok')+'">'+fmt(x.dn,{weekday:'short',day:'numeric',month:'short'})+'</span>';
-    var per=x.kind==='x'?'Pianificata':periodText(x.a);
+    var per=x.kind==='x'?'':periodText(x.a);
     return '<div class="nc"><div class="ng"><p class="ncl" style="color:'+clsInk(x.c.color)+'"><span class="nd" style="background:'+x.c.color+'"></span>'+esc(x.c.name)+'</p><p class="nh">'+esc(x.a.name)+'</p><p class="nsm">'+st+(per?'<span>'+esc(per)+'</span>':'')+'</p>'+(x.a.note?'<p class="nnt">'+esc(x.a.note)+'</p>':'')+'</div>'+doneBtn(x.c.id,x.a.id,x.todo,x.dn<=T)+'</div>';
   }).join('')+'</div></div>';
   return h;
@@ -460,7 +460,7 @@ function monthsSection(){
       groups.forEach(function(g){
         var when=g.kind==='o'?'entro '+fmt(g.end,{day:'numeric',month:'short'}):g.dates.map(function(d,i){return (d<T&&i===0)?'in ritardo':(d===T?'oggi':fmt(d,{day:'numeric',month:'short'}));}).join(' · ');
         var pc=g.kind==='o'?'warn':(g.first<T?'late':(g.first===T?'rose':(g.first<=weekEndDN()+7?'warn':'ok')));
-        h+='<div class="arow"><div class="ng"><p class="ncl" style="color:'+clsInk(g.c.color)+'"><span class="nd" style="background:'+g.c.color+'"></span>'+esc(g.c.name)+'</p><p class="nh">'+esc(g.a.name)+'</p><p class="nsm"><span class="pill '+pc+'">'+esc(when)+'</span>'+(g.kind==='x'?'<span>Pianificata</span>':'')+'</p>'+(g.a.note?'<p class="nnt">'+esc(g.a.note)+'</p>':'')+'</div>'+doneBtn(g.c.id,g.a.id,g.todo,g.first<=T)+'</div>';
+        h+='<div class="arow"><div class="ng"><p class="ncl" style="color:'+clsInk(g.c.color)+'"><span class="nd" style="background:'+g.c.color+'"></span>'+esc(g.c.name)+'</p><p class="nh">'+esc(g.a.name)+'</p><p class="nsm"><span class="pill '+pc+'">'+esc(when)+'</span></p>'+(g.a.note?'<p class="nnt">'+esc(g.a.note)+'</p>':'')+'</div>'+doneBtn(g.c.id,g.a.id,g.todo,g.first<=T)+'</div>';
       });
     }
     h+='</div>';
@@ -490,7 +490,7 @@ function viewOggi(){
       var lg=S.log.filter(function(l){return l.actId===a.id&&!l.skipped;}).map(function(l){return l.dn;}),ld=lg.length?Math.max.apply(null,lg):null;
       var lastT=ld==null?'Mai registrata':(T-ld===0?'Fatta oggi':(T-ld===1?'Fatta ieri':'Fatta '+(T-ld)+' giorni fa'));
       var per=periodText(a),hasTodo=S.todo.some(function(x){return x.actId===a.id;});
-      h+='<div class="arow"><div class="grow"><p class="aname">'+esc(a.name)+'</p><p class="tiny subtle" style="margin:2px 0 0">'+esc((hasTodo?'Pianificata · ':'')+(per||(a.bands.length?'Fuori periodo':'Su richiesta'))+' · '+lastT)+'</p>'+(a.note?'<p class="small muted anote">'+esc(a.note)+'</p>':'')+'</div>'+doneBtn(c.id,a.id,null,false)+'</div>';
+      h+='<div class="arow"><div class="grow"><p class="aname">'+esc(a.name)+'</p><p class="tiny subtle" style="margin:2px 0 0">'+esc((per||(a.bands.length?'Fuori periodo':'Su richiesta'))+' · '+lastT)+'</p>'+(a.note?'<p class="small muted anote">'+esc(a.note)+'</p>':'')+'</div>'+doneBtn(c.id,a.id,null,false)+'</div>';
     });
     h+='</div>';
   });
