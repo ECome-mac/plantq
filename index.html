@@ -152,16 +152,6 @@ button.stat.on span{color:var(--rose-soft-ink)}
 .opt:has(input:checked){border-color:var(--rose-line);background:var(--rose-soft)}
 .optt{display:block;font-weight:500}
 .opts{display:block;font-size:13px;line-height:20px;color:var(--ink-muted)}
-.printonly{display:none}
-@media print{
-  html,body{background:#fff!important}
-  body{background-image:none!important;color:#000}
-  .tabbar,.toast,.scrim,.calhead,.grid,.noprint,.brand,.app>.eyebrow,.app>h1,.app>.section,.app>.hint{display:none!important}
-  .printonly{display:block!important}
-  .app{max-width:none;padding:0}
-  table{width:100%;border-collapse:collapse;font-size:12pt}
-  th,td{border:1px solid #888;padding:6px 8px;text-align:left;vertical-align:top}
-}
 </style>
 </head>
 <body>
@@ -464,7 +454,6 @@ function viewCal(){
   var title=fmt(first,{month:'long',year:'numeric'});
   var h='<p class="eyebrow">Calendario</p><h1>'+esc(title.charAt(0).toUpperCase()+title.slice(1))+'</h1>';
   h+='<div class="calhead"><button class="iconbtn" data-a="mprev" aria-label="Mese precedente">'+ic('left')+'</button><button class="btn small" data-a="mtoday">Oggi</button><button class="iconbtn" data-a="mnext" aria-label="Mese successivo">'+ic('right')+'</button></div>';
-  h+='<div class="row noprint" style="margin-top:12px"><button class="btn small" data-a="print">Stampa il mese</button></div>';
   h+='<div class="grid" role="grid" aria-label="Giorni del mese">';
   ['L','M','M','G','V','S','D'].forEach(function(d){h+='<div class="dow" aria-hidden="true">'+d+'</div>';});
   for(var i=0;i<off;i++)h+='<div class="day blank"></div>';
@@ -489,11 +478,6 @@ function viewCal(){
     }).join('')+'</div>';
   }
   h+='</div>';
-  var pr='<div class="printonly"><h2 style="margin-bottom:8px">PlantQ · '+esc(title)+'</h2><table><thead><tr><th>Giorno</th><th>Attività</th></tr></thead><tbody>',any=false;
-  for(var pd=first;pd<=last;pd++){var pi=map[pd]||[];if(!pi.length)continue;any=true;
-    pr+='<tr><td>'+esc(fmt(pd,{weekday:'short',day:'numeric'}))+'</td><td>'+pi.map(function(x){return (x.done?'✓ ':'□ ')+esc(x.a.name)+' ('+esc(x.c.name)+')';}).join('<br>')+'</td></tr>';}
-  if(!any)pr+='<tr><td colspan="2">Nessuna attività in questo mese.</td></tr>';
-  h+=pr+'</tbody></table></div>';
   h+='<p class="hint" style="margin-top:16px">Le date future assumono che tu faccia le attività puntuali. Quando ne registri una, il calendario riparte da quel giorno.</p>';
   return h;
 }
@@ -634,7 +618,6 @@ function go(tab){UI.tab=tab;UI.cls=null;UI.edit=false;UI.confirm=null;window.scr
 var H={
  statOpen:function(t){UI.stat=t.dataset.v;render();},
  toggleOpen:function(t){UI.open[t.dataset.c]=!UI.open[t.dataset.c];render();},
- print:function(){window.print();},
  backupCopy:function(){var j=JSON.stringify(S);var fail=function(){UI.sheet={type:'restore',prefill:j};render();};try{navigator.clipboard.writeText(j).then(function(){toast('Backup copiato. Incollalo in un’app di note per conservarlo.');},fail);}catch(e){fail();}},
  restoreOpen:function(){UI.sheet={type:'restore',prefill:''};render();},
  restoreSave:function(){var v=document.getElementById('restoreText').value.trim();try{var o=JSON.parse(v);if(!o||!Array.isArray(o.classes)||!Array.isArray(o.log))throw 0;o.notes=o.notes||[];o.todo=o.todo||[];S=o;save();UI.sheet=null;toast('Backup ripristinato.');}catch(e){var m=document.getElementById('restoreErr');if(m)m.hidden=false;}},
