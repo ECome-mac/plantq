@@ -434,11 +434,6 @@ function viewOggi(){
   var wk=dueUntil(weekEndDN()),mo=dueUntil(monthEndDN()),nx=dueUntil(weekEndDN()+7).filter(function(x){return x.dn>weekEndDN();}),sel=effStat(wk,nx,mo),monthName=fmt(T,{month:'long'});
   var h='<section class="hero"><p class="eyebrow">'+esc(dateLine(T))+'</p><h1>'+hello+'</h1>';
   h+='<p class="sub">'+(n?'Oggi hai '+n+(n===1?' attività da fare.':' attività da fare.'):'Oggi non c’è nulla da fare.')+'</p><div class="stats">'+[['week',wk,'questa settimana'],['next',nx,'prossima settimana'],['month',mo,'mese di '+monthName]].map(function(q){return '<button class="stat'+(sel===q[0]?' on':'')+'" data-a="statOpen" data-v="'+q[0]+'" aria-pressed="'+(sel===q[0])+'"><b>'+q[1].length+'</b><span>'+q[2]+'</span></button>';}).join('')+'</div></section>'+statPanel(wk,nx,mo,sel);
-  if(it.soon.length){
-    h+='<div class="section"><p class="eyebrow">In arrivo, nei prossimi 7 giorni</p><div class="card" style="padding:4px 16px">';
-    h+=it.soon.map(function(x,i){return '<div class="row" style="padding:12px 0;'+(i?'border-top:1px solid var(--line)':'')+'"><span class="dot" style="background:'+x.c.color+'"></span><div class="grow"><p style="margin:0;font-weight:500">'+esc(x.a.name)+'</p><p class="tiny subtle" style="margin:0">'+esc(x.c.name)+'</p></div><span class="small muted">'+fmt(x.dn,{weekday:'short',day:'numeric'})+'</span></div>';}).join('');
-    h+='</div></div>';
-  }
   h+='<div class="section"><p class="eyebrow">Tutte le attività</p><div class="stack">';
   S.classes.forEach(function(c){if(!c.on)return;
     var acts=c.acts.filter(function(a){return a.on!==false;});
