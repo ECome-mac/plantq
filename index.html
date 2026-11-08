@@ -209,7 +209,7 @@ function load(){try{var r=localStorage.getItem(KEY);if(r){var o=JSON.parse(r);if
 function save(){try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}}
 var S=load()||seed();S.todo=S.todo||[];
 var T=todayDN();
-var UI={open:{},stat:null,tab:'oggi',cls:null,edit:false,confirm:null,y:yearOf(T),m:dt(T).getUTCMonth(),sel:T,sheet:null,toast:'',draft:'',draftLink:''};
+var UI={open:{},months:{},stat:null,tab:'oggi',cls:null,edit:false,confirm:null,y:yearOf(T),m:dt(T).getUTCMonth(),sel:T,sheet:null,toast:'',draft:'',draftLink:''};
 
 /* ---------- logica attivita ---------- */
 function inBand(b,m){return b.a<=b.b?(m>=b.a&&m<=b.b):(m>=b.a||m<=b.b);}
@@ -423,6 +423,33 @@ function statPanel(wk,nx,mo,sel){
 function doneBtn(cid,aid,todo,due){
   return '<button class="go '+(due?'due':'fut')+'" aria-label="Azioni sull’attività" title="Azioni" data-a="doneOpen" data-c="'+cid+'" data-t="'+aid+'"'+(todo?' data-todo="'+todo.id+'"':'')+'>'+ic('right',22)+'</button>';
 }
+function monthsSection(){
+  var y=yearOf(T),m0=dt(T).getUTCMonth();
+  var all=dueUntil(dnOf(y,m0+4,0));
+  var h='<div class="section"><p class="eyebrow">Prossimi 4 mesi</p><div class="stack">';
+  for(var k=0;k<4;k++){
+    var start=dnOf(y,m0+k,1),end=dnOf(y,m0+k+1,0),mname=fmt(start,{month:'long'});
+    var items=all.filter(function(x){return k===0?x.dn<=end:(x.dn>=start&&x.dn<=end);});
+    var groups=[],idx={};
+    items.forEach(function(x){
+      var key=x.kind==='x'?'x'+x.todo.id:(x.kind==='o'?'o'+x.a.id+x.end:'p'+x.a.id);
+      var g=idx[key];
+      if(!g){g=idx[key]={c:x.c,a:x.a,kind:x.kind,todo:x.todo,end:x.end,dates:[],first:x.dn};groups.push(g);}
+      g.dates.push(x.dn);
+    });
+    var open=!!UI.months[k];
+    h+='<div class="card"><button class="acc" data-a="toggleMonth" data-v="'+k+'" aria-expanded="'+open+'" aria-label="'+(open?'Chiudi':'Apri')+' '+esc(mname)+'"><span class="grow"><span class="accname" style="text-transform:capitalize">'+esc(mname)+'</span><span class="tiny subtle" style="display:block">'+groups.length+' attività</span></span><span class="chev'+(open?' up':'')+'">'+ic('down',20)+'</span></button>';
+    if(open){
+      if(!groups.length)h+='<p class="small muted" style="margin:4px 0 12px">Nessuna attività in questo mese.</p>';
+      groups.forEach(function(g){
+        var when=g.kind==='o'?'entro '+fmt(g.end,{day:'numeric',month:'short'}):g.dates.map(function(d,i){return (d<T&&i===0)?'in ritardo':(d===T?'oggi':fmt(d,{day:'numeric',month:'short'}));}).join(' · ');
+        h+='<div class="arow"><span class="dot" style="background:'+g.c.color+';align-self:flex-start;margin-top:5px"></span><div class="grow"><p class="eyebrow">'+esc(g.c.name)+'</p><p class="aname">'+esc(g.a.name)+'</p><p class="tiny subtle" style="margin:0">'+esc(when)+(g.kind==='x'?' · pianificata':'')+'</p>'+(g.a.note?'<p class="small muted anote">'+esc(g.a.note)+'</p>':'')+'</div>'+doneBtn(g.c.id,g.a.id,g.todo,g.first<=T)+'</div>';
+      });
+    }
+    h+='</div>';
+  }
+  return h+'</div></div>';
+}
 function effStat(wk,nx,mo){
   var ord=['week','next','month'],ls={week:wk,next:nx,month:mo};
   var i=Math.max(0,ord.indexOf(UI.stat||'week'));
@@ -435,7 +462,7 @@ function viewOggi(){
   var hr=new Date().getHours(),hello=hr<12?'Buongiorno':(hr<18?'Buon pomeriggio':'Buonasera'),nact=S.classes.filter(function(c){return c.on;}).length;
   var wk=dueUntil(weekEndDN()),mo=dueUntil(monthEndDN()),nx=dueUntil(weekEndDN()+7).filter(function(x){return x.dn>weekEndDN();}),sel=effStat(wk,nx,mo),monthName=fmt(T,{month:'long'});
   var h='<section class="hero"><p class="eyebrow">'+esc(dateLine(T))+'</p><h1>'+hello+'</h1>';
-  h+='<p class="sub">'+(n?'Oggi hai '+n+(n===1?' attività da fare.':' attività da fare.'):'Oggi non c’è nulla da fare.')+'</p><div class="stats">'+[['week',wk,'questa settimana'],['next',nx,'prossima settimana'],['month',mo,'mese di '+monthName]].map(function(q){return '<button class="stat'+(sel===q[0]?' on':'')+'" data-a="statOpen" data-v="'+q[0]+'" aria-pressed="'+(sel===q[0])+'"><b>'+q[1].length+'</b><span>'+q[2]+'</span></button>';}).join('')+'</div></section>'+statPanel(wk,nx,mo,sel);
+  h+='<p class="sub">'+(n?'Oggi hai '+n+(n===1?' attività da fare.':' attività da fare.'):'Oggi non c’è nulla da fare.')+'</p><div class="stats">'+[['week',wk,'questa settimana'],['next',nx,'prossima settimana'],['month',mo,'mese di '+monthName]].map(function(q){return '<button class="stat'+(sel===q[0]?' on':'')+'" data-a="statOpen" data-v="'+q[0]+'" aria-pressed="'+(sel===q[0])+'"><b>'+q[1].length+'</b><span>'+q[2]+'</span></button>';}).join('')+'</div></section>'+statPanel(wk,nx,mo,sel)+monthsSection();
   h+='<div class="section"><p class="eyebrow">Tutte le attività</p><div class="stack">';
   S.classes.forEach(function(c){if(!c.on)return;
     var acts=c.acts.filter(function(a){return a.on!==false;});
@@ -627,6 +654,7 @@ function go(tab){UI.tab=tab;UI.cls=null;UI.edit=false;UI.confirm=null;window.scr
 
 /* ---------- eventi ---------- */
 var H={
+ toggleMonth:function(t){UI.months[t.dataset.v]=!UI.months[t.dataset.v];render();},
  statOpen:function(t){UI.stat=t.dataset.v;render();},
  toggleOpen:function(t){UI.open[t.dataset.c]=!UI.open[t.dataset.c];render();},
  backupCopy:function(){var j=JSON.stringify(S);var fail=function(){UI.sheet={type:'restore',prefill:j};render();};try{navigator.clipboard.writeText(j).then(function(){toast('Backup copiato. Incollalo in un’app di note per conservarlo.');},fail);}catch(e){fail();}},
