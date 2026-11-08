@@ -147,6 +147,11 @@ button.stat.on span{color:var(--rose-soft-ink)}
 .chev svg{transition:transform .15s}
 .chev.up svg{transform:rotate(180deg)}
 .anote{margin:2px 0 0;font-style:italic}
+.opt{display:flex;gap:12px;align-items:flex-start;padding:12px;margin-bottom:8px;border:1px solid var(--line);border-radius:12px;background:var(--surface);cursor:pointer}
+.opt input{flex:none;width:20px;height:20px;margin:2px 0 0;accent-color:var(--rose-text)}
+.opt:has(input:checked){border-color:var(--rose-line);background:var(--rose-soft)}
+.optt{display:block;font-weight:500}
+.opts{display:block;font-size:13px;line-height:20px;color:var(--ink-muted)}
 .printonly{display:none}
 @media print{
   html,body{background:#fff!important}
@@ -201,14 +206,14 @@ function seed(){
    {id:'orto',name:'Frutta e orto',env:'Esterno',plants:['Pomodori'],acts:[A('Annaffiare','4-5:3,6-8:2,9:4'),A('Concimare','3-9:21'),A('Semina o trapianto','3-5:x'),A('Trattamenti antiparassitari','4-9:15'),A('Raccolta','6-10:x'.replace(':x',':7')),A('Potatura e pulizia di fine stagione','11:x')]}
   ];
   C.forEach(function(c){c.on=true;c.color=COLORS[c.id];c.plants=[];ensureTreatment(c);});
-  return {v:2,classes:C,log:[],notes:[]};
+  return {v:2,classes:C,log:[],notes:[],todo:[]};
 }
 
 /* ---------- stato ---------- */
 var KEY='plantq-v1';
 function load(){try{var r=localStorage.getItem(KEY);if(r){var o=JSON.parse(r);if(o&&o.classes){if((o.v||1)<2){o.classes.forEach(ensureTreatment);o.v=2;try{localStorage.setItem(KEY,JSON.stringify(o));}catch(e2){}}return o;}}}catch(e){}return null;}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}}
-var S=load()||seed();
+var S=load()||seed();S.todo=S.todo||[];
 var T=todayDN();
 var UI={open:{},stat:null,tab:'oggi',cls:null,edit:false,confirm:null,y:yearOf(T),m:dt(T).getUTCMonth(),sel:T,sheet:null,toast:'',draft:'',draftLink:''};
 
@@ -222,10 +227,14 @@ function nextAfter(act,dn){
   return firstActive(act,dn+1);
 }
 function hasPeriodic(act){return act.bands.some(function(b){return b.d>0;});}
+function applySnooze(act,base){
+  if(base!=null&&act.snooze!=null&&act.snooze>base){var sb=bandAtRaw(act,act.snooze);return (sb&&sb.d>0)?act.snooze:firstActive(act,act.snooze);}
+  return base;
+}
 function nextDue(act){
   if(!hasPeriodic(act))return null;
-  if(act.last!=null)return nextAfter(act,act.last);
-  return firstActive(act,T);
+  if(act.last!=null)return applySnooze(act,nextAfter(act,act.last));
+  return applySnooze(act,firstActive(act,T));
 }
 function windows(b,y){
   if(b.a<=b.b)return [[dnOf(y,b.a-1,1),dnOf(y,b.b,0)]];
@@ -236,7 +245,7 @@ function onceDueNow(act){
   var y=yearOf(T),out=null;
   act.bands.forEach(function(b){
     if(b.d!==0||out)return;
-    windows(b,y).forEach(function(w){if(!out&&T>=w[0]&&T<=w[1]&&!doneIn(act,w[0],w[1]))out={dn:w[0],end:w[1],band:b};});
+    windows(b,y).forEach(function(w){if(!out&&T>=w[0]&&T<=w[1]&&!doneIn(act,w[0],w[1])&&!(act.snooze!=null&&T<act.snooze))out={dn:w[0],end:w[1],band:b};});
   });
   return out;
 }
@@ -292,6 +301,7 @@ function todayItems(){
     }
     var o=onceDueNow(a);if(o)late.push({c:c,a:a,dn:T,kind:'o',end:o.end,band:o.band});
   });});
+  S.todo.forEach(function(td){var c=classOf(td.clsId),a=c&&actOf(c,td.actId);if(!c||!a||!c.on||a.on===false)return;var item={c:c,a:a,dn:td.dn,kind:'x',todo:td};if(td.dn<=T)late.push(item);else if(td.dn<=T+7)soon.push(item);});
   late.sort(function(x,y){return x.dn-y.dn;});soon.sort(function(x,y){return x.dn-y.dn;});
   return {late:late,soon:soon};
 }
@@ -302,6 +312,7 @@ function monthItems(y,m){
     if(a.on===false)return;
     occurrences(a,A,Bd).forEach(function(o){add(o.dn,{c:c,a:a,dn:o.dn,kind:o.kind,done:false});});
   });});
+  S.todo.forEach(function(td){var c=classOf(td.clsId),a=c&&actOf(c,td.actId);if(!c||!a||!c.on||a.on===false)return;if(td.dn>=A&&td.dn<=Bd)add(td.dn,{c:c,a:a,dn:td.dn,kind:'x',done:false,todo:td});});
   S.log.forEach(function(l){var c=classOf(l.clsId);if(!c||!c.on)return;if(l.dn<A||l.dn>Bd)return;var a=actOf(c,l.actId);if(!a)return;add(l.dn,{c:c,a:a,dn:l.dn,done:true,log:l});});
   return map;
 }
@@ -363,6 +374,19 @@ function itemCard(it,showBtn){
     '<div class="row" style="margin-top:12px;justify-content:space-between">'+st+(showBtn?'<button class="btn primary small" data-a="doneOpen" data-c="'+it.c.id+'" data-t="'+it.a.id+'">'+ic('check',18)+'Fatto</button>':'')+'</div></div>';
 }
 
+function resolveTarget(c,a,todoId){
+  var td=null;
+  if(todoId)td=S.todo.find(function(x){return x.id===todoId;});
+  if(td)return {kind:'x',todo:td};
+  var d=nextDue(a);
+  if(d!=null)return {kind:'p',due:d};
+  var o=onceDueNow(a);
+  if(o)return {kind:'o',due:o.dn,end:o.end};
+  td=S.todo.filter(function(x){return x.actId===a.id;}).sort(function(x,y){return x.dn-y.dn;})[0];
+  if(td)return {kind:'x',todo:td};
+  return {kind:null};
+}
+function removeTodo(id){S.todo=S.todo.filter(function(x){return x.id!==id;});}
 function weekEndDN(){var i=(dt(T).getUTCDay()+6)%7;return T+(6-i);}
 function monthEndDN(){return dnOf(yearOf(T),dt(T).getUTCMonth()+1,0);}
 function dueUntil(end){
@@ -375,11 +399,12 @@ function dueUntil(end){
       if(b.d!==0)return;
       [y-1,y,y+1].forEach(function(yy){windows(b,yy).forEach(function(w){
         if(w[1]<T||doneIn(a,w[0],w[1]))return;
-        var due=Math.max(T,w[0]);
+        var due=Math.max(T,w[0],a.snooze||0);if(due>w[1])return;
         if(due<=end&&!out.some(function(o){return o.a===a&&o.kind==='o'&&o.end===w[1];}))out.push({c:c,a:a,dn:due,kind:'o',end:w[1]});
       });});
     });
   });});
+  S.todo.forEach(function(td){var c=classOf(td.clsId),a=c&&actOf(c,td.actId);if(!c||!a||!c.on||a.on===false)return;if(td.dn<=end)out.push({c:c,a:a,dn:td.dn,kind:'x',todo:td});});
   out.sort(function(x,z){return x.dn-z.dn;});
   return out;
 }
@@ -391,8 +416,8 @@ function statPanel(wk,mo){
   h+='<div class="card" style="padding:4px 16px">'+list.map(function(x,i){
     var late=T-x.dn;
     var when=x.kind==='o'?'entro '+fmt(x.end,{day:'numeric',month:'short'}):(late>0?'in ritardo':(late===0?'oggi':fmt(x.dn,{weekday:'short',day:'numeric'})));
-    var btn=x.dn<=T?'<button class="btn small" data-a="doneOpen" data-c="'+x.c.id+'" data-t="'+x.a.id+'">Fatto</button>':'';
-    return '<div class="row" style="padding:12px 0;'+(i?'border-top:1px solid var(--line)':'')+'"><span class="dot" style="background:'+x.c.color+'"></span><div class="grow"><p style="margin:0;font-weight:500">'+esc(x.a.name)+'</p>'+(x.a.note?'<p class="small muted anote">'+esc(x.a.note)+'</p>':'')+'<p class="tiny subtle" style="margin:0">'+esc(x.c.name)+' · '+esc(when)+'</p></div>'+btn+'</div>';
+    var btn=x.dn<=T?'<button class="btn small" data-a="doneOpen" data-c="'+x.c.id+'" data-t="'+x.a.id+'"'+(x.todo?' data-todo="'+x.todo.id+'"':'')+'>Fatto</button>':'';
+    return '<div class="row" style="padding:12px 0;'+(i?'border-top:1px solid var(--line)':'')+'"><span class="dot" style="background:'+x.c.color+'"></span><div class="grow"><p style="margin:0;font-weight:500">'+esc(x.a.name)+'</p>'+(x.a.note?'<p class="small muted anote">'+esc(x.a.note)+'</p>':'')+'<p class="tiny subtle" style="margin:0">'+esc(x.c.name)+' · '+esc(when)+(x.kind==='x'?' · pianificata':'')+'</p></div>'+btn+'</div>';
   }).join('')+'</div></div>';
   return h;
 }
@@ -402,10 +427,6 @@ function viewOggi(){
   var wk=dueUntil(weekEndDN()),mo=dueUntil(monthEndDN());
   var h='<section class="hero"><p class="eyebrow">'+esc(dateLine(T))+'</p><h1>'+hello+'</h1>';
   h+='<p class="sub">'+(n?'Oggi hai '+n+(n===1?' attività da fare.':' attività da fare.'):'Oggi non c’è nulla da fare.')+'</p><div class="stats"><button class="stat'+(UI.stat==='week'?' on':'')+'" data-a="statOpen" data-v="week" aria-expanded="'+(UI.stat==='week')+'"><b>'+wk.length+'</b><span>questa settimana</span></button><button class="stat'+(UI.stat==='month'?' on':'')+'" data-a="statOpen" data-v="month" aria-expanded="'+(UI.stat==='month')+'"><b>'+mo.length+'</b><span>questo mese</span></button><div class="stat"><b>'+nact+'</b><span>classi attive</span></div></div></section>'+statPanel(wk,mo);
-  h+='<div class="section"><p class="eyebrow">Da fare oggi</p><div class="stack">';
-  if(n)h+=it.late.map(function(x){return itemCard(x,true);}).join('');
-  else h+='<div class="empty">Tutto in ordine. Le prossime attività sono qui sotto.</div>';
-  h+='</div></div>';
   if(it.soon.length){
     h+='<div class="section"><p class="eyebrow">In arrivo, nei prossimi 7 giorni</p><div class="card" style="padding:4px 16px">';
     h+=it.soon.map(function(x,i){return '<div class="row" style="padding:12px 0;'+(i?'border-top:1px solid var(--line)':'')+'"><span class="dot" style="background:'+x.c.color+'"></span><div class="grow"><p style="margin:0;font-weight:500">'+esc(x.a.name)+'</p><p class="tiny subtle" style="margin:0">'+esc(x.c.name)+'</p></div><span class="small muted">'+fmt(x.dn,{weekday:'short',day:'numeric'})+'</span></div>';}).join('');
@@ -418,10 +439,10 @@ function viewOggi(){
     h+='<div class="card"><button class="acc" data-a="toggleOpen" data-c="'+c.id+'" aria-expanded="'+isOpen+'" aria-label="'+(isOpen?'Chiudi':'Apri')+' le attività di '+esc(c.name)+'"><span class="dot" style="background:'+c.color+'"></span><span class="grow"><span class="accname">'+esc(c.name)+'</span><span class="tiny subtle" style="display:block">'+acts.length+' attività'+(c.plants.length?' · '+esc(c.plants.join(', ')):'')+'</span></span><span class="chev'+(isOpen?' up':'')+'">'+ic('down',20)+'</span></button>';
     if(isOpen&&!acts.length)h+='<p class="small muted" style="margin:8px 0 0">Nessuna attività attiva in questa classe.</p>';
     if(isOpen)acts.forEach(function(a){
-      var lg=S.log.filter(function(l){return l.actId===a.id;}).map(function(l){return l.dn;}),ld=lg.length?Math.max.apply(null,lg):null;
+      var lg=S.log.filter(function(l){return l.actId===a.id&&!l.skipped;}).map(function(l){return l.dn;}),ld=lg.length?Math.max.apply(null,lg):null;
       var lastT=ld==null?'Mai registrata':(T-ld===0?'Fatta oggi':(T-ld===1?'Fatta ieri':'Fatta '+(T-ld)+' giorni fa'));
-      var per=periodText(a);
-      h+='<div class="arow"><div class="grow"><p class="aname">'+esc(a.name)+'</p>'+(a.note?'<p class="small muted anote">'+esc(a.note)+'</p>':'')+'<p class="tiny subtle" style="margin:2px 0 0">'+esc((per||(a.bands.length?'Fuori periodo':'Su richiesta'))+' · '+lastT)+'</p></div><button class="btn small" data-a="doneOpen" data-c="'+c.id+'" data-t="'+a.id+'">Fatto</button></div>';
+      var per=periodText(a),hasTodo=S.todo.some(function(x){return x.actId===a.id;});
+      h+='<div class="arow"><div class="grow"><p class="aname">'+esc(a.name)+'</p>'+(a.note?'<p class="small muted anote">'+esc(a.note)+'</p>':'')+'<p class="tiny subtle" style="margin:2px 0 0">'+esc((hasTodo?'Pianificata · ':'')+(per||(a.bands.length?'Fuori periodo':'Su richiesta'))+' · '+lastT)+'</p></div><button class="btn small" data-a="doneOpen" data-c="'+c.id+'" data-t="'+a.id+'">Fatto</button></div>';
     });
     h+='</div>';
   });
@@ -430,7 +451,7 @@ function viewOggi(){
   h+='<div class="section"><p class="eyebrow">Registro, ultime svolte</p>';
   if(recent.length){
     h+='<div class="card" style="padding:4px 16px">'+recent.map(function(l,i){var c=classOf(l.clsId),a=c&&actOf(c,l.actId);if(!a)return '';
-      return '<div class="row" style="padding:12px 0;'+(i?'border-top:1px solid var(--line)':'')+'"><div class="grow"><p style="margin:0;font-weight:500">'+esc(a.name)+' <span class="muted" style="font-weight:400">· '+esc(c.name)+'</span></p><p class="tiny subtle" style="margin:0">'+fmt(l.dn,{day:'numeric',month:'long'})+(l.note?' · '+esc(l.note):'')+'</p></div><button class="btn ghost small" data-a="undo" data-id="'+l.id+'">Annulla</button></div>';}).join('')+'</div>';
+      return '<div class="row" style="padding:12px 0;'+(i?'border-top:1px solid var(--line)':'')+'"><div class="grow"><p style="margin:0;font-weight:500">'+esc(a.name)+' <span class="muted" style="font-weight:400">· '+esc(c.name)+'</span></p><p class="tiny subtle" style="margin:0">'+(l.skipped?'Saltata · ':'')+fmt(l.dn,{day:'numeric',month:'long'})+(l.note?' · '+esc(l.note):'')+'</p></div><button class="btn ghost small" data-a="undo" data-id="'+l.id+'">Annulla</button></div>';}).join('')+'</div>';
   }else h+='<div class="empty">Quando segni un’attività come fatta, la trovi qui.</div>';
   h+='</div>';
   return h;
@@ -459,8 +480,8 @@ function viewCal(){
   else{
     h+='<div class="card" style="padding:4px 16px">'+sel.map(function(x,i){
       var right;
-      if(x.done)right='<span class="pill ok">Fatto</span>';
-      else if(x.dn<=T)right='<button class="btn primary small" data-a="doneOpen" data-c="'+x.c.id+'" data-t="'+x.a.id+'">Fatto</button>';
+      if(x.done)right=(x.log&&x.log.skipped)?'<span class="pill neutral">Saltata</span>':'<span class="pill ok">Fatto</span>';
+      else if(x.dn<=T)right='<button class="btn primary small" data-a="doneOpen" data-c="'+x.c.id+'" data-t="'+x.a.id+'"'+(x.todo?' data-todo="'+x.todo.id+'"':'')+'>Fatto</button>';
       else right='<span class="pill neutral">Da fare</span>';
       return '<div class="row" style="padding:12px 0;'+(i?'border-top:1px solid var(--line)':'')+'"><span class="dot" style="background:'+x.c.color+'"></span><div class="grow"><p style="margin:0;font-weight:500">'+esc(x.a.name)+'</p><p class="tiny subtle" style="margin:0">'+esc(x.c.name)+(x.done&&x.log.note?' · '+esc(x.log.note):'')+'</p></div>'+right+'</div>';
     }).join('')+'</div>';
@@ -551,6 +572,9 @@ function viewNote(){
   return h;
 }
 
+function optHtml(v,t,sub,chk){
+  return '<label class="opt"><input type="radio" name="mode" value="'+v+'"'+(chk?' checked':'')+'><span><span class="optt">'+t+'</span><span class="opts">'+sub+'</span></span></label>';
+}
 function viewSheet(){
   var s=UI.sheet;if(!s)return '';
   var inner='';
@@ -561,6 +585,24 @@ function viewSheet(){
       '<div class="stack"><div class="field"><label for="doneDate">Data</label><input class="input" type="date" id="doneDate" value="'+iso+'" max="'+iso+'"></div>'+
       '<div class="field"><label for="doneNote">Nota (facoltativa)</label><input class="input" id="doneNote" placeholder="Es. concime liquido" autocomplete="off"></div>'+
       '<div class="row" style="flex-wrap:wrap"><button class="btn primary grow" data-a="doneSave" data-c="'+c.id+'" data-t="'+a.id+'">Registra</button><button class="btn" data-a="sheetClose">Annulla</button></div></div>';
+  }else if(s.type==='act'){
+    var ac=classOf(s.cls),aa=ac&&actOf(ac,s.act);if(!aa){UI.sheet=null;return '';}
+    var tg=resolveTarget(ac,aa,s.todo),hasDue=tg.kind!==null;
+    var dd=dt(T),isoD=dd.getUTCFullYear()+'-'+String(dd.getUTCMonth()+1).padStart(2,'0')+'-'+String(dd.getUTCDate()).padStart(2,'0');
+    var others=ac.acts.filter(function(x){return x.id!==aa.id&&x.on!==false;}).sort(function(x,y){return (x.bands.length?1:0)-(y.bands.length?1:0);});
+    inner='<h2 id="shTitle">'+esc(aa.name)+'</h2><p class="small muted" style="margin:2px 0 16px">'+esc(ac.name)+' · vale per tutta la classe</p>'+
+      '<div role="radiogroup" aria-label="Cosa vuoi fare">'+
+      optHtml('done','Fatta','La registro e il calendario riparte da qui',true)+
+      (hasDue?optHtml('snooze','Rinvia','La sposto più avanti',false):'')+
+      (hasDue?optHtml('skip','Non la faccio','La salto questa volta',false):'')+
+      (others.length?optHtml('next','Fatta, ne serve un’altra','La registro e ne pianifico un’altra, per esempio un trattamento dopo un controllo',false):'')+
+      '</div><div class="stack" style="margin-top:12px">'+
+      '<div class="field" data-modes="done next"><label for="doneDate">Data</label><input class="input" type="date" id="doneDate" value="'+isoD+'" max="'+isoD+'"></div>'+
+      '<div class="field" data-modes="done next"><label for="doneNote">Nota (facoltativa)</label><input class="input" id="doneNote" placeholder="Es. trovata cocciniglia" autocomplete="off"></div>'+
+      '<div class="field" data-modes="snooze" hidden><label for="snoozeDays">Rinvia di</label><select class="input" id="snoozeDays"><option value="7">1 settimana</option><option value="14">2 settimane</option><option value="30">1 mese</option></select></div>'+
+      '<div class="field" data-modes="next" hidden><label for="nextAct">Attività da pianificare</label><select class="input" id="nextAct">'+others.map(function(x){return '<option value="'+x.id+'">'+esc(x.name)+'</option>';}).join('')+'</select></div>'+
+      '<div class="field" data-modes="next" hidden><label for="nextWhen">Quando</label><select class="input" id="nextWhen"><option value="0">Oggi</option><option value="7">Tra 1 settimana</option><option value="14">Tra 2 settimane</option><option value="30">Tra 1 mese</option></select></div>'+
+      '<div class="row" style="flex-wrap:wrap"><button class="btn primary grow" data-a="actSave" data-c="'+ac.id+'" data-t="'+aa.id+'"'+(s.todo?' data-todo="'+s.todo+'"':'')+'>Conferma</button><button class="btn" data-a="sheetClose">Annulla</button></div></div>';
   }else if(s.type==='restore'){
     inner='<h2 id="shTitle">Backup dei dati</h2><p class="small muted" style="margin:2px 0 16px">'+(s.prefill?'Copia tutto il testo qui sotto e conservalo in un’app di note.':'Incolla qui il testo del backup. I dati attuali verranno sostituiti.')+'</p><div class="stack"><div class="field"><label for="restoreText">Testo del backup</label><textarea class="input" id="restoreText" style="min-height:140px;font-size:14px">'+esc(s.prefill||'')+'</textarea><p class="hint" id="restoreErr" style="color:var(--error-ink)" hidden>Il testo non è un backup valido.</p></div><div class="row" style="flex-wrap:wrap">'+(s.prefill?'':'<button class="btn primary grow" data-a="restoreSave">Ripristina</button>')+'<button class="btn'+(s.prefill?' primary grow':'')+'" data-a="sheetClose">'+(s.prefill?'Chiudi':'Annulla')+'</button></div></div>';
   }else if(s.type==='newcls'){
@@ -593,7 +635,7 @@ var H={
  print:function(){window.print();},
  backupCopy:function(){var j=JSON.stringify(S);var fail=function(){UI.sheet={type:'restore',prefill:j};render();};try{navigator.clipboard.writeText(j).then(function(){toast('Backup copiato. Incollalo in un’app di note per conservarlo.');},fail);}catch(e){fail();}},
  restoreOpen:function(){UI.sheet={type:'restore',prefill:''};render();},
- restoreSave:function(){var v=document.getElementById('restoreText').value.trim();try{var o=JSON.parse(v);if(!o||!Array.isArray(o.classes)||!Array.isArray(o.log))throw 0;o.notes=o.notes||[];S=o;save();UI.sheet=null;toast('Backup ripristinato.');}catch(e){var m=document.getElementById('restoreErr');if(m)m.hidden=false;}},
+ restoreSave:function(){var v=document.getElementById('restoreText').value.trim();try{var o=JSON.parse(v);if(!o||!Array.isArray(o.classes)||!Array.isArray(o.log))throw 0;o.notes=o.notes||[];o.todo=o.todo||[];S=o;save();UI.sheet=null;toast('Backup ripristinato.');}catch(e){var m=document.getElementById('restoreErr');if(m)m.hidden=false;}},
  tab:function(t){go(t.dataset.v);render();},
  mprev:function(){UI.m--;if(UI.m<0){UI.m=11;UI.y--;}UI.sel=dnOf(UI.y,UI.m,1);render();},
  mnext:function(){UI.m++;if(UI.m>11){UI.m=0;UI.y++;}UI.sel=dnOf(UI.y,UI.m,1);render();},
@@ -603,7 +645,36 @@ var H={
  back:function(){UI.cls=null;UI.edit=false;UI.confirm=null;render();},
  toggle:function(t){var c=classOf(t.dataset.c);c.on=!c.on;save();render();},
  editToggle:function(){UI.edit=!UI.edit;UI.confirm=null;render();},
- doneOpen:function(t){UI.sheet={type:'done',cls:t.dataset.c,act:t.dataset.t};render();setTimeout(function(){var e=document.getElementById('doneNote');if(e)e.focus({preventScroll:true});},30);},
+ doneOpen:function(t){UI.sheet={type:'act',cls:t.dataset.c,act:t.dataset.t,todo:t.dataset.todo||null};render();},
+ actSave:function(t){
+   var c=classOf(t.dataset.c),a=c&&actOf(c,t.dataset.t);if(!a)return;
+   var mr=document.querySelector('input[name="mode"]:checked'),mode=mr?mr.value:'done';
+   var tg=resolveTarget(c,a,t.dataset.todo||null),dnv=T,note='',msg='';
+   var de=document.getElementById('doneDate'),ne=document.getElementById('doneNote');
+   if(de&&de.value){var p=de.value.split('-');dnv=Math.min(T,dnOf(+p[0],+p[1]-1,+p[2]));}
+   if(ne)note=ne.value.trim();
+   if(mode==='done'||mode==='next'){
+     markDone(c.id,a.id,dnv,note);a.snooze=null;
+     if(tg.kind==='x')removeTodo(tg.todo.id);
+     msg='Registrata: il calendario riparte da qui.';
+     if(mode==='next'){
+       var na=actOf(c,document.getElementById('nextAct').value),nd=+document.getElementById('nextWhen').value;
+       if(na){S.todo.push({id:uid(),clsId:c.id,actId:na.id,dn:T+nd,from:a.id});msg='Registrata. Pianificata: '+na.name+(nd?', tra '+(nd===7?'1 settimana':(nd===14?'2 settimane':'1 mese')):', oggi')+'.';}
+     }
+   }else if(mode==='snooze'){
+     var n=+document.getElementById('snoozeDays').value;
+     if(tg.kind==='x')tg.todo.dn=Math.max(tg.todo.dn,T)+n;
+     else if(tg.kind==='p')a.snooze=Math.max(tg.due,T)+n;
+     else if(tg.kind==='o')a.snooze=T+n;
+     msg='Rinviata di '+(n===7?'1 settimana':(n===14?'2 settimane':'1 mese'))+'.';
+   }else if(mode==='skip'){
+     if(tg.kind==='x')removeTodo(tg.todo.id);
+     if(tg.kind==='p'){a.last=tg.due>T?tg.due:T;a.snooze=null;}
+     S.log.push({id:uid(),clsId:c.id,actId:a.id,dn:T,note:'',skipped:true});
+     msg='Saltata questa volta.';
+   }
+   save();UI.sheet=null;toast(msg);
+ },
  doneSave:function(t){
    var v=document.getElementById('doneDate').value,note=document.getElementById('doneNote').value.trim(),dn=T;
    if(v){var p=v.split('-');dn=dnOf(+p[0],+p[1]-1,+p[2]);}
@@ -618,7 +689,7 @@ var H={
  addAct:function(t){var i=document.getElementById('newAct'),v=i.value.trim();if(!v)return;classOf(t.dataset.c).acts.push({id:uid(),name:v,bands:[{a:T?monthOf(T):1,b:monthOf(T),d:7}],last:null});save();render();},
  toggleAct:function(t){var a=actOf(classOf(t.dataset.c),t.dataset.t);a.on=(a.on===false);save();render();},
  delActAsk:function(t){UI.confirm='delact:'+t.dataset.t;render();},
- delActYes:function(t){var c=classOf(t.dataset.c);c.acts=c.acts.filter(function(a){return a.id!==t.dataset.t;});S.log=S.log.filter(function(l){return l.actId!==t.dataset.t;});UI.confirm=null;save();render();},
+ delActYes:function(t){var c=classOf(t.dataset.c);c.acts=c.acts.filter(function(a){return a.id!==t.dataset.t;});S.log=S.log.filter(function(l){return l.actId!==t.dataset.t;});S.todo=S.todo.filter(function(x){return x.actId!==t.dataset.t;});UI.confirm=null;save();render();},
  addBand:function(t){var a=actOf(classOf(t.dataset.c),t.dataset.t);a.bands.push({a:1,b:12,d:14});save();render();},
  delBand:function(t){var a=actOf(classOf(t.dataset.c),t.dataset.t);a.bands.splice(+t.dataset.i,1);save();render();},
  newClsOpen:function(){UI.sheet={type:'newcls'};render();setTimeout(function(){var e=document.getElementById('ncName');if(e)e.focus({preventScroll:true});},30);},
@@ -630,7 +701,7 @@ var H={
  },
  delClsAsk:function(){UI.confirm='delcls';render();},
  confirmNo:function(){UI.confirm=null;render();},
- delClsYes:function(t){S.classes=S.classes.filter(function(c){return c.id!==t.dataset.c;});S.log=S.log.filter(function(l){return l.clsId!==t.dataset.c;});save();UI.cls=null;UI.edit=false;UI.confirm=null;render();},
+ delClsYes:function(t){S.classes=S.classes.filter(function(c){return c.id!==t.dataset.c;});S.log=S.log.filter(function(l){return l.clsId!==t.dataset.c;});S.todo=S.todo.filter(function(x){return x.clsId!==t.dataset.c;});save();UI.cls=null;UI.edit=false;UI.confirm=null;render();},
  resetAsk:function(){UI.confirm='reset';render();},
  resetNo:function(){UI.confirm=null;render();},
  resetYes:function(){S=seed();save();UI.confirm=null;toast('Classi iniziali ripristinate.');},
@@ -654,6 +725,7 @@ document.addEventListener('input',function(e){
 });
 document.addEventListener('change',function(e){
   var t=e.target;
+  if(t.name==='mode'){var mv=t.value;document.querySelectorAll('[data-modes]').forEach(function(e){e.hidden=e.dataset.modes.split(' ').indexOf(mv)<0;});return;}
   if(t.id==='noteLink'){UI.draftLink=t.value;return;}
   var k=t.dataset&&t.dataset.c;if(!k||!t.dataset.k)return;
   var a=actOf(classOf(t.dataset.k),t.dataset.t);if(!a)return;
