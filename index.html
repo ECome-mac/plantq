@@ -467,7 +467,7 @@ function viewOggi(){
   S.classes.forEach(function(c){if(!c.on)return;
     var acts=c.acts.filter(function(a){return a.on!==false;});
     var isOpen=!!UI.open[c.id];
-    h+='<div class="card"><button class="acc" data-a="toggleOpen" data-c="'+c.id+'" aria-expanded="'+isOpen+'" aria-label="'+(isOpen?'Chiudi':'Apri')+' le attività di '+esc(c.name)+'"><span class="dot" style="background:'+c.color+'"></span><span class="grow"><span class="accname">'+esc(c.name)+'</span><span class="tiny subtle" style="display:block">'+acts.length+' attività'+(c.plants.length?' · '+esc(c.plants.join(', ')):'')+'</span></span><span class="chev'+(isOpen?' up':'')+'">'+ic('down',20)+'</span></button>';
+    h+='<div class="card"><button class="acc" data-a="toggleOpen" data-c="'+c.id+'" aria-expanded="'+isOpen+'" aria-label="'+(isOpen?'Chiudi':'Apri')+' le attività di '+esc(c.name)+'"><span class="dot" style="background:'+c.color+'"></span><span class="grow"><span class="accname">'+esc(c.name)+'</span><span class="tiny subtle" style="display:block">'+acts.length+' attività</span></span><span class="chev'+(isOpen?' up':'')+'">'+ic('down',20)+'</span></button>';
     if(isOpen&&!acts.length)h+='<p class="small muted" style="margin:8px 0 0">Nessuna attività attiva in questa classe.</p>';
     if(isOpen)acts.forEach(function(a){
       var lg=S.log.filter(function(l){return l.actId===a.id&&!l.skipped;}).map(function(l){return l.dn;}),ld=lg.length?Math.max.apply(null,lg):null;
@@ -525,7 +525,7 @@ function viewClassi(){
   var h='<h1 style="margin-top:0">Pianificazione delle attività</h1><p class="sub">Spegni una classe quando non hai quel tipo di pianta: le sue attività spariscono dal calendario.</p>';
   h+='<div class="section stack">';
   S.classes.forEach(function(c){
-    h+='<div class="cls'+(c.on?'':' off')+'"><button class="open" data-a="openCls" data-c="'+c.id+'" aria-label="Apri '+esc(c.name)+'"><span class="dot" style="background:'+c.color+'"></span><span class="grow"><span style="display:block;font-family:var(--display);font-weight:600;font-size:20px;line-height:28px">'+esc(c.name)+'</span><span class="small muted" style="display:block">'+esc(c.env)+' · '+c.plants.length+(c.plants.length===1?' pianta':' piante')+' · '+c.acts.length+' attività</span></span><span class="chev">'+ic('right',20)+'</span></button>'+
+    h+='<div class="cls'+(c.on?'':' off')+'"><button class="open" data-a="openCls" data-c="'+c.id+'" aria-label="Apri '+esc(c.name)+'"><span class="dot" style="background:'+c.color+'"></span><span class="grow"><span style="display:block;font-family:var(--display);font-weight:600;font-size:20px;line-height:28px">'+esc(c.name)+'</span><span class="small muted" style="display:block">'+esc(c.env)+' · '+c.acts.length+' attività</span></span><span class="chev">'+ic('right',20)+'</span></button>'+
       '<button class="switch hit" role="switch" aria-checked="'+c.on+'" aria-label="Classe '+esc(c.name)+' attiva" data-a="toggle" data-c="'+c.id+'"></button></div>';
   });
   h+='</div><div class="section row" style="flex-wrap:wrap"><button class="btn" data-a="newClsOpen">'+ic('plus',18)+'Nuova classe</button>';
@@ -538,14 +538,9 @@ function viewClassi(){
 function viewClasse(c){
   if(!c){UI.cls=null;return viewClassi();}
   var h='<div class="row" style="justify-content:space-between;margin-left:-8px"><button class="btn ghost" data-a="back">'+ic('left',20)+'Piano</button><button class="btn small'+(UI.edit?' primary':'')+'" data-a="editToggle">'+(UI.edit?ic('check',18)+'Fine':ic('edit',18)+'Modifica')+'</button></div>';
-  h+='<div class="row" style="margin-top:12px;align-items:flex-start"><div class="grow"><p class="eyebrow">'+esc(c.env)+'</p><h1 style="margin-top:2px"><span class="dot" style="display:inline-block;background:'+c.color+';margin-right:10px;vertical-align:middle"></span>'+esc(c.name)+'</h1></div><button class="switch hit" style="margin-top:14px" role="switch" aria-checked="'+c.on+'" aria-label="Classe attiva" data-a="toggle" data-c="'+c.id+'"></button></div>';
-  if(!c.on)h+='<div class="banner" style="margin-top:16px">Classe non attiva: le sue attività non compaiono nel calendario. Piante e registro restano salvati.</div>';
-  h+='<div class="section"><p class="eyebrow">Piante</p><div class="chips">';
-  c.plants.forEach(function(p,i){h+='<span class="chip">'+esc(p)+(UI.edit?'<button data-a="delPlant" data-c="'+c.id+'" data-i="'+i+'" aria-label="Rimuovi '+esc(p)+'">'+ic('x',14)+'</button>':'')+'</span>';});
-  if(!c.plants.length)h+='<span class="small muted">Nessuna pianta.</span>';
-  h+='</div>';
-  h+='<div class="row" style="margin-top:12px"><input class="input" id="newPlant" placeholder="Aggiungi una pianta" aria-label="Nome della nuova pianta" autocomplete="off"><button class="btn" data-a="addPlant" data-c="'+c.id+'">'+ic('plus',18)+'Aggiungi</button></div></div>';
-  h+='<div class="section"><p class="eyebrow">Attività per mese</p><div class="stack">';
+  h+='<div class="row" style="margin-top:12px;align-items:flex-start"><div class="grow"><h1 style="margin-top:2px"><span class="dot" style="display:inline-block;background:'+c.color+';margin-right:10px;vertical-align:middle"></span>'+esc(c.name)+'</h1>'+(UI.edit?'<div class="field" style="margin-top:8px"><label for="clsEnv" class="tiny subtle">Ambiente</label><select class="input" id="clsEnv" data-c="clsEnv" data-k="'+c.id+'">'+['Interno','Esterno','Entrambi'].map(function(e){return '<option'+(c.env===e?' selected':'')+'>'+e+'</option>';}).join('')+'</select></div>':'<p class="small muted" style="margin:2px 0 0">'+esc(c.env)+'</p>')+'</div><button class="switch hit" style="margin-top:14px" role="switch" aria-checked="'+c.on+'" aria-label="Classe attiva" data-a="toggle" data-c="'+c.id+'"></button></div>';
+  if(!c.on)h+='<div class="banner" style="margin-top:16px">Classe non attiva: le sue attività non compaiono nel calendario. Il registro resta salvato.</div>';
+  h+='<div class="section"><p class="eyebrow">Attività</p><div class="stack">';
   c.acts.forEach(function(a){
     var aoff=a.on===false;
     h+='<div class="card'+(aoff?' off':'')+'"><div class="row"><h3 class="grow">'+esc(a.name)+'</h3><button class="switch hit" role="switch" aria-checked="'+(!aoff)+'" aria-label="Attività '+esc(a.name)+' attiva" data-a="toggleAct" data-c="'+c.id+'" data-t="'+a.id+'"></button></div>'+(UI.edit?'<div class="field" style="margin-top:8px"><label for="n'+a.id+'" class="tiny subtle">Nota dell’attività</label><textarea class="input" id="n'+a.id+'" rows="2" style="min-height:88px" placeholder="Es. concime liquido, 1 tappo in 1 litro" data-c="actNote" data-k="'+c.id+'" data-t="'+a.id+'">'+esc(a.note||'')+'</textarea></div>':(a.note?'<p class="small muted anote">'+esc(a.note)+'</p>':''))+(aoff?'<p class="tiny subtle" style="margin:4px 0 0">Non attiva: non compare nel calendario. Lo storico resta salvato.</p>':'')+'<div style="margin-top:6px">';
@@ -579,7 +574,6 @@ function viewNote(){
   var h='<p class="eyebrow">Quaderno</p><h1>Note</h1><p class="sub">Scrivi o detta una nota. Per dettare, tocca il microfono sulla tastiera dell’iPhone.</p>';
   h+='<div class="section card stack"><div class="field"><label for="noteText">Nota</label><textarea class="input" id="noteText" placeholder="Es. Il limone ha le foglie gialle. Concimare ogni 10 giorni in primavera.">'+esc(UI.draft)+'</textarea></div>';
   h+='<div class="field"><label for="noteLink">Riferita a</label><select class="input" id="noteLink"><option value="">Generale</option><optgroup label="Classi">'+S.classes.map(function(c){return '<option value="c:'+c.id+'"'+(UI.draftLink==='c:'+c.id?' selected':'')+'>'+esc(c.name)+'</option>';}).join('')+'</optgroup>';
-  S.classes.forEach(function(c){if(c.plants.length)h+='<optgroup label="Piante · '+esc(c.name)+'">'+c.plants.map(function(p){var v='p:'+c.id+':'+p;return '<option value="'+esc(v)+'"'+(UI.draftLink===v?' selected':'')+'>'+esc(p)+'</option>';}).join('')+'</optgroup>';});
   h+='</select></div><button class="btn primary" data-a="noteSave">Salva nota</button>';
   h+='<p class="hint">Per ora l’analisi riconosce frasi come “concimare ogni 10 giorni in primavera” e ti propone la modifica. Non cambia nulla finché non confermi.</p></div>';
   h+='<div class="section"><p class="eyebrow">Note salvate</p><div class="stack">';
@@ -752,6 +746,7 @@ document.addEventListener('change',function(e){
   if(t.name==='mode'){var mv=t.value;document.querySelectorAll('[data-modes]').forEach(function(e){e.hidden=e.dataset.modes.split(' ').indexOf(mv)<0;});return;}
   if(t.id==='noteLink'){UI.draftLink=t.value;return;}
   var k=t.dataset&&t.dataset.c;if(!k||!t.dataset.k)return;
+  if(k==='clsEnv'){var cc=classOf(t.dataset.k);if(cc){cc.env=t.value;save();render();}return;}
   var a=actOf(classOf(t.dataset.k),t.dataset.t);if(!a)return;
   if(k==='actNote'){a.note=t.value.trim();save();render();return;}
   var b=a.bands[+t.dataset.i];if(!b)return;
