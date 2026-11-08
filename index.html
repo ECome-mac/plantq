@@ -66,6 +66,7 @@ h3{margin:0;font-family:var(--display);font-weight:600;font-size:18px;line-heigh
 .btn{min-height:44px;padding:0 16px;border:1px solid var(--line-strong);border-radius:10px;background:var(--surface);color:var(--ink);font-weight:500;display:inline-flex;align-items:center;justify-content:center;gap:8px}
 .btn.primary{border-color:var(--rose-line);background:var(--rose);color:var(--rose-ink)}
 .btn.small{min-height:40px;padding:0 14px;font-size:14px}
+.btn.icon{width:56px;min-height:44px;padding:0;flex:none}
 .btn.ghost{border-color:transparent;background:transparent;color:var(--ink-muted)}
 .btn.danger{border-color:var(--error);color:var(--error-ink);background:var(--surface)}
 .iconbtn{flex:none;width:44px;height:44px;display:inline-flex;align-items:center;justify-content:center;border:1px solid transparent;border-radius:10px;background:transparent;color:var(--ink-muted)}
@@ -142,6 +143,9 @@ button.stat.on{background:var(--rose-soft);border-color:var(--rose-line)}
 button.stat.on span{color:var(--rose-soft-ink)}
 .arow{display:flex;align-items:center;gap:12px;padding:12px 0;border-top:1px solid var(--line)}
 .aname{margin:0;font-weight:500}
+.go{flex:none;width:44px;height:44px;display:inline-flex;align-items:center;justify-content:center;padding:0;border-radius:50%;cursor:pointer}
+.go.due{background:var(--rose);border:1px solid var(--rose-line);color:var(--rose-ink)}
+.go.fut{background:var(--sunken);border:1px solid transparent;color:var(--rose-text)}
 .acc{width:100%;min-height:52px;display:flex;align-items:center;gap:12px;padding:6px 0;border:0;background:transparent;text-align:left}
 .accname{display:block;font-family:var(--display);font-weight:600;font-size:20px;line-height:28px;letter-spacing:-.01em}
 .chev svg{transition:transform .15s}
@@ -361,7 +365,7 @@ function itemCard(it,showBtn){
   else{st='<span class="pill neutral">'+fmt(it.dn,{weekday:'short',day:'numeric',month:'short'})+'</span>';}
   var sub=it.kind==='o'?'Una volta nel periodo '+bandText(it.band).split(' ·')[0]:periodText(it.a);
   return '<div class="card"><div class="row"><span class="dot" style="background:'+it.c.color+'"></span><div class="grow"><p class="eyebrow">'+esc(it.c.name)+'</p><h3>'+esc(it.a.name)+'</h3>'+(it.a.note?'<p class="small muted anote">'+esc(it.a.note)+'</p>':'')+'<p class="small muted" style="margin:2px 0 0">'+esc(sub)+'</p></div></div>'+
-    '<div class="row" style="margin-top:12px;justify-content:space-between">'+st+(showBtn?'<button class="btn primary small" data-a="doneOpen" data-c="'+it.c.id+'" data-t="'+it.a.id+'">'+ic('check',18)+'Fatto</button>':'')+'</div></div>';
+    '<div class="row" style="margin-top:12px;justify-content:space-between">'+st+(showBtn?doneBtn(it.c.id,it.a.id,null,true):'')+'</div></div>';
 }
 
 function resolveTarget(c,a,todoId){
@@ -403,13 +407,21 @@ function statPanel(wk,nx,mo,sel){
   var list=sel==='week'?wk:(sel==='next'?nx:mo),title=sel==='week'?'Attività della settimana':(sel==='next'?'Attività della prossima settimana':'Attività del mese di '+fmt(T,{month:'long'}));
   var h='<div class="section" style="margin-top:20px"><p class="eyebrow">'+title+'</p>';
   if(!list.length)return h+'<div class="empty">Nessuna attività in questo periodo.</div></div>';
-  h+='<div class="card" style="padding:4px 16px">'+list.map(function(x,i){
-    var late=T-x.dn;
-    var when=x.kind==='o'?'entro '+fmt(x.end,{day:'numeric',month:'short'}):(late>0?'in ritardo':(late===0?'oggi':fmt(x.dn,{weekday:'short',day:'numeric'})));
-    var btn=x.dn<=T?'<button class="btn small" data-a="doneOpen" data-c="'+x.c.id+'" data-t="'+x.a.id+'"'+(x.todo?' data-todo="'+x.todo.id+'"':'')+'>Fatto</button>':'';
-    return '<div class="row" style="padding:12px 0;'+(i?'border-top:1px solid var(--line)':'')+'"><span class="dot" style="background:'+x.c.color+'"></span><div class="grow"><p class="eyebrow">'+esc(x.c.name)+'</p><p style="margin:0;font-weight:500">'+esc(x.a.name)+'</p><p class="tiny subtle" style="margin:0">'+esc(when)+(x.kind==='x'?' · pianificata':'')+'</p>'+(x.a.note?'<p class="small muted anote">'+esc(x.a.note)+'</p>':'')+'</div>'+btn+'</div>';
+  h+='<div class="stack">'+list.map(function(x){
+    var late=T-x.dn,st;
+    if(x.kind==='o')st='<span class="pill warn">Da fare entro '+fmt(x.end,{day:'numeric',month:'short'})+'</span>';
+    else if(late>0)st='<span class="pill late">In ritardo di '+late+(late===1?' giorno':' giorni')+'</span>';
+    else if(late===0)st='<span class="pill rose">Oggi</span>';
+    else st='<span class="pill neutral">'+fmt(x.dn,{weekday:'short',day:'numeric',month:'short'})+'</span>';
+    var per=x.kind==='x'?'Pianificata':periodText(x.a);
+    var btn=doneBtn(x.c.id,x.a.id,x.todo,x.dn<=T);
+    return '<div class="card"><div class="row"><span class="dot" style="background:'+x.c.color+'"></span><div class="grow"><p class="eyebrow">'+esc(x.c.name)+'</p><h3>'+esc(x.a.name)+'</h3>'+(per?'<p class="small muted" style="margin:2px 0 0">'+esc(per)+'</p>':'')+(x.a.note?'<p class="small muted anote">'+esc(x.a.note)+'</p>':'')+'</div></div>'+
+      '<div class="row" style="margin-top:12px;justify-content:space-between;min-height:44px">'+st+btn+'</div></div>';
   }).join('')+'</div></div>';
   return h;
+}
+function doneBtn(cid,aid,todo,due){
+  return '<button class="go '+(due?'due':'fut')+'" aria-label="Azioni sull’attività" title="Azioni" data-a="doneOpen" data-c="'+cid+'" data-t="'+aid+'"'+(todo?' data-todo="'+todo.id+'"':'')+'>'+ic('right',22)+'</button>';
 }
 function effStat(wk,nx,mo){
   var ord=['week','next','month'],ls={week:wk,next:nx,month:mo};
@@ -434,7 +446,7 @@ function viewOggi(){
       var lg=S.log.filter(function(l){return l.actId===a.id&&!l.skipped;}).map(function(l){return l.dn;}),ld=lg.length?Math.max.apply(null,lg):null;
       var lastT=ld==null?'Mai registrata':(T-ld===0?'Fatta oggi':(T-ld===1?'Fatta ieri':'Fatta '+(T-ld)+' giorni fa'));
       var per=periodText(a),hasTodo=S.todo.some(function(x){return x.actId===a.id;});
-      h+='<div class="arow"><div class="grow"><p class="aname">'+esc(a.name)+'</p><p class="tiny subtle" style="margin:2px 0 0">'+esc((hasTodo?'Pianificata · ':'')+(per||(a.bands.length?'Fuori periodo':'Su richiesta'))+' · '+lastT)+'</p>'+(a.note?'<p class="small muted anote">'+esc(a.note)+'</p>':'')+'</div><button class="btn small" data-a="doneOpen" data-c="'+c.id+'" data-t="'+a.id+'">Fatto</button></div>';
+      h+='<div class="arow"><div class="grow"><p class="aname">'+esc(a.name)+'</p><p class="tiny subtle" style="margin:2px 0 0">'+esc((hasTodo?'Pianificata · ':'')+(per||(a.bands.length?'Fuori periodo':'Su richiesta'))+' · '+lastT)+'</p>'+(a.note?'<p class="small muted anote">'+esc(a.note)+'</p>':'')+'</div>'+doneBtn(c.id,a.id,null,false)+'</div>';
     });
     h+='</div>';
   });
@@ -472,8 +484,7 @@ function viewCal(){
     h+='<div class="card" style="padding:4px 16px">'+sel.map(function(x,i){
       var right;
       if(x.done)right=(x.log&&x.log.skipped)?'<span class="pill neutral">Saltata</span>':'<span class="pill ok">Fatto</span>';
-      else if(x.dn<=T)right='<button class="btn primary small" data-a="doneOpen" data-c="'+x.c.id+'" data-t="'+x.a.id+'"'+(x.todo?' data-todo="'+x.todo.id+'"':'')+'>Fatto</button>';
-      else right='<span class="pill neutral">Da fare</span>';
+      else right=doneBtn(x.c.id,x.a.id,x.todo,x.dn<=T);
       return '<div class="row" style="padding:12px 0;'+(i?'border-top:1px solid var(--line)':'')+'"><span class="dot" style="background:'+x.c.color+'"></span><div class="grow"><p style="margin:0;font-weight:500">'+esc(x.a.name)+'</p><p class="tiny subtle" style="margin:0">'+esc(x.c.name)+(x.done&&x.log.note?' · '+esc(x.log.note):'')+'</p></div>'+right+'</div>';
     }).join('')+'</div>';
   }
