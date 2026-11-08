@@ -417,7 +417,7 @@ function statPanel(wk,mo){
     var late=T-x.dn;
     var when=x.kind==='o'?'entro '+fmt(x.end,{day:'numeric',month:'short'}):(late>0?'in ritardo':(late===0?'oggi':fmt(x.dn,{weekday:'short',day:'numeric'})));
     var btn=x.dn<=T?'<button class="btn small" data-a="doneOpen" data-c="'+x.c.id+'" data-t="'+x.a.id+'"'+(x.todo?' data-todo="'+x.todo.id+'"':'')+'>Fatto</button>':'';
-    return '<div class="row" style="padding:12px 0;'+(i?'border-top:1px solid var(--line)':'')+'"><span class="dot" style="background:'+x.c.color+'"></span><div class="grow"><p style="margin:0;font-weight:500">'+esc(x.a.name)+'</p>'+(x.a.note?'<p class="small muted anote">'+esc(x.a.note)+'</p>':'')+'<p class="tiny subtle" style="margin:0">'+esc(x.c.name)+' · '+esc(when)+(x.kind==='x'?' · pianificata':'')+'</p></div>'+btn+'</div>';
+    return '<div class="row" style="padding:12px 0;'+(i?'border-top:1px solid var(--line)':'')+'"><span class="dot" style="background:'+x.c.color+'"></span><div class="grow"><p style="margin:0;font-weight:500">'+esc(x.a.name)+'</p><p class="tiny subtle" style="margin:0">'+esc(x.c.name)+' · '+esc(when)+(x.kind==='x'?' · pianificata':'')+'</p>'+(x.a.note?'<p class="small muted anote">'+esc(x.a.note)+'</p>':'')+'</div>'+btn+'</div>';
   }).join('')+'</div></div>';
   return h;
 }
@@ -442,7 +442,7 @@ function viewOggi(){
       var lg=S.log.filter(function(l){return l.actId===a.id&&!l.skipped;}).map(function(l){return l.dn;}),ld=lg.length?Math.max.apply(null,lg):null;
       var lastT=ld==null?'Mai registrata':(T-ld===0?'Fatta oggi':(T-ld===1?'Fatta ieri':'Fatta '+(T-ld)+' giorni fa'));
       var per=periodText(a),hasTodo=S.todo.some(function(x){return x.actId===a.id;});
-      h+='<div class="arow"><div class="grow"><p class="aname">'+esc(a.name)+'</p>'+(a.note?'<p class="small muted anote">'+esc(a.note)+'</p>':'')+'<p class="tiny subtle" style="margin:2px 0 0">'+esc((hasTodo?'Pianificata · ':'')+(per||(a.bands.length?'Fuori periodo':'Su richiesta'))+' · '+lastT)+'</p></div><button class="btn small" data-a="doneOpen" data-c="'+c.id+'" data-t="'+a.id+'">Fatto</button></div>';
+      h+='<div class="arow"><div class="grow"><p class="aname">'+esc(a.name)+'</p><p class="tiny subtle" style="margin:2px 0 0">'+esc((hasTodo?'Pianificata · ':'')+(per||(a.bands.length?'Fuori periodo':'Su richiesta'))+' · '+lastT)+'</p>'+(a.note?'<p class="small muted anote">'+esc(a.note)+'</p>':'')+'</div><button class="btn small" data-a="doneOpen" data-c="'+c.id+'" data-t="'+a.id+'">Fatto</button></div>';
     });
     h+='</div>';
   });
