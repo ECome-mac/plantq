@@ -408,9 +408,9 @@ function dueUntil(end){
   out.sort(function(x,z){return x.dn-z.dn;});
   return out;
 }
-function statPanel(wk,mo){
-  if(!UI.stat)return '';
-  var list=UI.stat==='week'?wk:mo,title=UI.stat==='week'?'Da fare questa settimana':'Da fare questo mese';
+function statPanel(wk,nx,mo,sel){
+  if(!sel)return '';
+  var list=sel==='week'?wk:(sel==='next'?nx:mo),title=sel==='week'?'Attività della settimana':(sel==='next'?'Attività della prossima settimana':'Attività del mese di '+fmt(T,{month:'long'}));
   var h='<div class="section" style="margin-top:20px"><p class="eyebrow">'+title+'</p>';
   if(!list.length)return h+'<div class="empty">Nessuna attività in questo periodo.</div></div>';
   h+='<div class="card" style="padding:4px 16px">'+list.map(function(x,i){
@@ -421,12 +421,19 @@ function statPanel(wk,mo){
   }).join('')+'</div></div>';
   return h;
 }
+function effStat(wk,nx,mo){
+  var ord=['week','next','month'],ls={week:wk,next:nx,month:mo};
+  var i=Math.max(0,ord.indexOf(UI.stat||'week'));
+  for(var k=i;k<3;k++)if(ls[ord[k]].length)return ord[k];
+  for(var j=0;j<i;j++)if(ls[ord[j]].length)return ord[j];
+  return ord[i];
+}
 function viewOggi(){
   var it=todayItems(),n=it.late.length,off=S.classes.filter(function(c){return !c.on;}).length;
   var hr=new Date().getHours(),hello=hr<12?'Buongiorno':(hr<18?'Buon pomeriggio':'Buonasera'),nact=S.classes.filter(function(c){return c.on;}).length;
-  var wk=dueUntil(weekEndDN()),mo=dueUntil(monthEndDN());
+  var wk=dueUntil(weekEndDN()),mo=dueUntil(monthEndDN()),nx=dueUntil(weekEndDN()+7).filter(function(x){return x.dn>weekEndDN();}),sel=effStat(wk,nx,mo),monthName=fmt(T,{month:'long'});
   var h='<section class="hero"><p class="eyebrow">'+esc(dateLine(T))+'</p><h1>'+hello+'</h1>';
-  h+='<p class="sub">'+(n?'Oggi hai '+n+(n===1?' attività da fare.':' attività da fare.'):'Oggi non c’è nulla da fare.')+'</p><div class="stats"><button class="stat'+(UI.stat==='week'?' on':'')+'" data-a="statOpen" data-v="week" aria-expanded="'+(UI.stat==='week')+'"><b>'+wk.length+'</b><span>questa settimana</span></button><button class="stat'+(UI.stat==='month'?' on':'')+'" data-a="statOpen" data-v="month" aria-expanded="'+(UI.stat==='month')+'"><b>'+mo.length+'</b><span>questo mese</span></button><div class="stat"><b>'+nact+'</b><span>classi attive</span></div></div></section>'+statPanel(wk,mo);
+  h+='<p class="sub">'+(n?'Oggi hai '+n+(n===1?' attività da fare.':' attività da fare.'):'Oggi non c’è nulla da fare.')+'</p><div class="stats">'+[['week',wk,'questa settimana'],['next',nx,'prossima settimana'],['month',mo,'mese di '+monthName]].map(function(q){return '<button class="stat'+(sel===q[0]?' on':'')+'" data-a="statOpen" data-v="'+q[0]+'" aria-pressed="'+(sel===q[0])+'"><b>'+q[1].length+'</b><span>'+q[2]+'</span></button>';}).join('')+'</div></section>'+statPanel(wk,nx,mo,sel);
   if(it.soon.length){
     h+='<div class="section"><p class="eyebrow">In arrivo, nei prossimi 7 giorni</p><div class="card" style="padding:4px 16px">';
     h+=it.soon.map(function(x,i){return '<div class="row" style="padding:12px 0;'+(i?'border-top:1px solid var(--line)':'')+'"><span class="dot" style="background:'+x.c.color+'"></span><div class="grow"><p style="margin:0;font-weight:500">'+esc(x.a.name)+'</p><p class="tiny subtle" style="margin:0">'+esc(x.c.name)+'</p></div><span class="small muted">'+fmt(x.dn,{weekday:'short',day:'numeric'})+'</span></div>';}).join('');
@@ -630,7 +637,7 @@ function go(tab){UI.tab=tab;UI.cls=null;UI.edit=false;UI.confirm=null;window.scr
 
 /* ---------- eventi ---------- */
 var H={
- statOpen:function(t){UI.stat=(UI.stat===t.dataset.v)?null:t.dataset.v;render();},
+ statOpen:function(t){UI.stat=t.dataset.v;render();},
  toggleOpen:function(t){UI.open[t.dataset.c]=!UI.open[t.dataset.c];render();},
  print:function(){window.print();},
  backupCopy:function(){var j=JSON.stringify(S);var fail=function(){UI.sheet={type:'restore',prefill:j};render();};try{navigator.clipboard.writeText(j).then(function(){toast('Backup copiato. Incollalo in un’app di note per conservarlo.');},fail);}catch(e){fail();}},
