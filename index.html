@@ -146,7 +146,7 @@ button.stat.on span{color:var(--rose-soft-ink)}
 .accname{display:block;font-family:var(--display);font-weight:600;font-size:20px;line-height:28px;letter-spacing:-.01em}
 .chev svg{transition:transform .15s}
 .chev.up svg{transform:rotate(180deg)}
-.anote{margin:2px 0 0;font-style:italic}
+.anote{margin:2px 0 0;font-style:italic;white-space:pre-wrap;overflow-wrap:anywhere}
 .opt{display:flex;gap:12px;align-items:flex-start;padding:12px;margin-bottom:8px;border:1px solid var(--line);border-radius:12px;background:var(--surface);cursor:pointer}
 .opt input{flex:none;width:20px;height:20px;margin:2px 0 0;accent-color:var(--rose-text)}
 .opt:has(input:checked){border-color:var(--rose-line);background:var(--rose-soft)}
@@ -524,7 +524,7 @@ function viewClasse(c){
   h+='<div class="section"><p class="eyebrow">Attività per mese</p><div class="stack">';
   c.acts.forEach(function(a){
     var aoff=a.on===false;
-    h+='<div class="card'+(aoff?' off':'')+'"><div class="row"><h3 class="grow">'+esc(a.name)+'</h3><button class="switch hit" role="switch" aria-checked="'+(!aoff)+'" aria-label="Attività '+esc(a.name)+' attiva" data-a="toggleAct" data-c="'+c.id+'" data-t="'+a.id+'"></button></div>'+(UI.edit?'<div class="field" style="margin-top:8px"><label for="n'+a.id+'" class="tiny subtle">Nota dell’attività</label><input class="input" id="n'+a.id+'" value="'+esc(a.note||'')+'" placeholder="Es. concime liquido, 1 tappo in 1 litro" autocomplete="off" data-c="actNote" data-k="'+c.id+'" data-t="'+a.id+'"></div>':(a.note?'<p class="small muted anote">'+esc(a.note)+'</p>':''))+(aoff?'<p class="tiny subtle" style="margin:4px 0 0">Non attiva: non compare nel calendario. Lo storico resta salvato.</p>':'')+'<div style="margin-top:6px">';
+    h+='<div class="card'+(aoff?' off':'')+'"><div class="row"><h3 class="grow">'+esc(a.name)+'</h3><button class="switch hit" role="switch" aria-checked="'+(!aoff)+'" aria-label="Attività '+esc(a.name)+' attiva" data-a="toggleAct" data-c="'+c.id+'" data-t="'+a.id+'"></button></div>'+(UI.edit?'<div class="field" style="margin-top:8px"><label for="n'+a.id+'" class="tiny subtle">Nota dell’attività</label><textarea class="input" id="n'+a.id+'" rows="2" style="min-height:88px" placeholder="Es. concime liquido, 1 tappo in 1 litro" data-c="actNote" data-k="'+c.id+'" data-t="'+a.id+'">'+esc(a.note||'')+'</textarea></div>':(a.note?'<p class="small muted anote">'+esc(a.note)+'</p>':''))+(aoff?'<p class="tiny subtle" style="margin:4px 0 0">Non attiva: non compare nel calendario. Lo storico resta salvato.</p>':'')+'<div style="margin-top:6px">';
     a.bands.forEach(function(b,i){
       if(!UI.edit){h+='<div class="band"><span>'+esc(bandText(b).split(' ·')[0])+'</span><span class="muted">'+freqText(b.d)+'</span></div>';}
       else{
