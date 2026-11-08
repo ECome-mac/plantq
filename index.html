@@ -572,6 +572,7 @@ function viewNote(){
   return h;
 }
 
+function isControl(a){return /^controllo/i.test(a.name);}
 function optHtml(v,t,sub,chk){
   return '<label class="opt"><input type="radio" name="mode" value="'+v+'"'+(chk?' checked':'')+'><span><span class="optt">'+t+'</span><span class="opts">'+sub+'</span></span></label>';
 }
@@ -588,20 +589,19 @@ function viewSheet(){
   }else if(s.type==='act'){
     var ac=classOf(s.cls),aa=ac&&actOf(ac,s.act);if(!aa){UI.sheet=null;return '';}
     var tg=resolveTarget(ac,aa,s.todo),hasDue=tg.kind!==null;
+    var treatAct=isControl(aa)?ac.acts.find(function(x){return x.id!==aa.id&&x.on!==false&&/antiparassit/i.test(x.name);}):null;
     var dd=dt(T),isoD=dd.getUTCFullYear()+'-'+String(dd.getUTCMonth()+1).padStart(2,'0')+'-'+String(dd.getUTCDate()).padStart(2,'0');
     var others=ac.acts.filter(function(x){return x.id!==aa.id&&x.on!==false;}).sort(function(x,y){return (x.bands.length?1:0)-(y.bands.length?1:0);});
     inner='<h2 id="shTitle">'+esc(aa.name)+'</h2><p class="small muted" style="margin:2px 0 16px">'+esc(ac.name)+' · vale per tutta la classe</p>'+
       '<div role="radiogroup" aria-label="Cosa vuoi fare">'+
       optHtml('done','Fatta','La registro e il calendario riparte da qui',true)+
+      (treatAct?optHtml('treat','Fatta, attiva trattamento','La registro, pianifico il trattamento entro 1 settimana e un nuovo controllo entro 2 settimane',false):'')+
       (hasDue?optHtml('snooze','Rinvia','La sposto più avanti',false):'')+
-      (hasDue?optHtml('skip','Non la faccio','La salto questa volta',false):'')+
-      (others.length?optHtml('next','Fatta, ne serve un’altra','La registro e ne pianifico un’altra, per esempio un trattamento dopo un controllo',false):'')+
+      (hasDue?optHtml('skip','Salta l’attività','La salto questa volta',false):'')+
       '</div><div class="stack" style="margin-top:12px">'+
-      '<div class="field" data-modes="done next"><label for="doneDate">Data</label><input class="input" type="date" id="doneDate" value="'+isoD+'" max="'+isoD+'"></div>'+
-      '<div class="field" data-modes="done next"><label for="doneNote">Nota (facoltativa)</label><input class="input" id="doneNote" placeholder="Es. trovata cocciniglia" autocomplete="off"></div>'+
+      '<div class="field" data-modes="done treat"><label for="doneDate">Data</label><input class="input" type="date" id="doneDate" value="'+isoD+'" max="'+isoD+'"></div>'+
+      '<div class="field" data-modes="done treat"><label for="doneNote">Nota (facoltativa)</label><input class="input" id="doneNote" placeholder="Es. trovata cocciniglia" autocomplete="off"></div>'+
       '<div class="field" data-modes="snooze" hidden><label for="snoozeDays">Rinvia di</label><select class="input" id="snoozeDays"><option value="7">1 settimana</option><option value="14">2 settimane</option><option value="30">1 mese</option></select></div>'+
-      '<div class="field" data-modes="next" hidden><label for="nextAct">Attività da pianificare</label><select class="input" id="nextAct">'+others.map(function(x){return '<option value="'+x.id+'">'+esc(x.name)+'</option>';}).join('')+'</select></div>'+
-      '<div class="field" data-modes="next" hidden><label for="nextWhen">Quando</label><select class="input" id="nextWhen"><option value="0">Oggi</option><option value="7">Tra 1 settimana</option><option value="14">Tra 2 settimane</option><option value="30">Tra 1 mese</option></select></div>'+
       '<div class="row" style="flex-wrap:wrap"><button class="btn primary grow" data-a="actSave" data-c="'+ac.id+'" data-t="'+aa.id+'"'+(s.todo?' data-todo="'+s.todo+'"':'')+'>Conferma</button><button class="btn" data-a="sheetClose">Annulla</button></div></div>';
   }else if(s.type==='restore'){
     inner='<h2 id="shTitle">Backup dei dati</h2><p class="small muted" style="margin:2px 0 16px">'+(s.prefill?'Copia tutto il testo qui sotto e conservalo in un’app di note.':'Incolla qui il testo del backup. I dati attuali verranno sostituiti.')+'</p><div class="stack"><div class="field"><label for="restoreText">Testo del backup</label><textarea class="input" id="restoreText" style="min-height:140px;font-size:14px">'+esc(s.prefill||'')+'</textarea><p class="hint" id="restoreErr" style="color:var(--error-ink)" hidden>Il testo non è un backup valido.</p></div><div class="row" style="flex-wrap:wrap">'+(s.prefill?'':'<button class="btn primary grow" data-a="restoreSave">Ripristina</button>')+'<button class="btn'+(s.prefill?' primary grow':'')+'" data-a="sheetClose">'+(s.prefill?'Chiudi':'Annulla')+'</button></div></div>';
@@ -653,13 +653,13 @@ var H={
    var de=document.getElementById('doneDate'),ne=document.getElementById('doneNote');
    if(de&&de.value){var p=de.value.split('-');dnv=Math.min(T,dnOf(+p[0],+p[1]-1,+p[2]));}
    if(ne)note=ne.value.trim();
-   if(mode==='done'||mode==='next'){
+   if(mode==='done'||mode==='treat'){
      markDone(c.id,a.id,dnv,note);a.snooze=null;
      if(tg.kind==='x')removeTodo(tg.todo.id);
      msg='Registrata: il calendario riparte da qui.';
-     if(mode==='next'){
-       var na=actOf(c,document.getElementById('nextAct').value),nd=+document.getElementById('nextWhen').value;
-       if(na){S.todo.push({id:uid(),clsId:c.id,actId:na.id,dn:T+nd,from:a.id});msg='Registrata. Pianificata: '+na.name+(nd?', tra '+(nd===7?'1 settimana':(nd===14?'2 settimane':'1 mese')):', oggi')+'.';}
+     if(mode==='treat'){
+       var ta=c.acts.find(function(x){return x.id!==a.id&&x.on!==false&&/antiparassit/i.test(x.name);});
+       if(ta){S.todo.push({id:uid(),clsId:c.id,actId:ta.id,dn:T+7,from:a.id});S.todo.push({id:uid(),clsId:c.id,actId:a.id,dn:T+14,from:a.id});a.snooze=T+30;msg='Registrata. Trattamento pianificato entro 1 settimana e nuovo controllo entro 2 settimane.';}
      }
    }else if(mode==='snooze'){
      var n=+document.getElementById('snoozeDays').value;
