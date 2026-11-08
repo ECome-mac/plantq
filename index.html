@@ -157,6 +157,17 @@ button.stat.on span{color:var(--rose-soft-ink)}
 .nh{margin:1px 0 0;font-family:var(--display);font-weight:600;font-size:16.5px;line-height:22px;letter-spacing:-.01em}
 .nsm{margin:3px 0 0;display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12.5px;line-height:18px;color:var(--ink-muted)}
 .nnt{margin:3px 0 0;font-size:13px;line-height:18px;font-style:italic;color:var(--ink-muted);white-space:pre-wrap;overflow-wrap:anywhere}
+.stats4{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:14px}
+.stats4 .stat{padding:8px;min-height:72px}
+.stats4 .stat b{font-size:24px;line-height:26px}
+.stats4 .stat span{font-size:11.5px;line-height:14px;text-transform:none}
+.allb{width:100%;margin-top:6px;display:flex;align-items:center;gap:10px;padding:12px 14px;border:1px solid var(--line);border-radius:16px;background:var(--surface);text-align:left;font:inherit;color:inherit;cursor:pointer;min-height:56px}
+.allb .l{flex:1}
+.allb b{display:block;font-size:15px;line-height:20px}
+.allb small{font-size:12px;color:var(--ink-subtle)}
+.allb.on{background:var(--rose-soft);border-color:var(--rose-line)}
+.allb.on small{color:var(--rose-soft-ink)}
+.allb .chev{color:var(--rose-text)}
 .acc{width:100%;min-height:52px;display:flex;align-items:center;gap:12px;padding:6px 0;border:0;background:transparent;text-align:left}
 .accname{display:block;font-family:var(--display);font-weight:600;font-size:20px;line-height:28px;letter-spacing:-.01em}
 .chev svg{transition:transform .15s}
@@ -220,7 +231,7 @@ function load(){try{var r=localStorage.getItem(KEY);if(r){var o=JSON.parse(r);if
 function save(){try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}}
 var S=load()||seed();S.todo=S.todo||[];
 var T=todayDN();
-var UI={open:{},months:{},stat:null,tab:'oggi',cls:null,edit:false,confirm:null,y:yearOf(T),m:dt(T).getUTCMonth(),sel:T,sheet:null,toast:'',draft:'',draftLink:''};
+var UI={open:{},months:{0:true},stat:null,tab:'oggi',cls:null,edit:false,confirm:null,y:yearOf(T),m:dt(T).getUTCMonth(),sel:T,sheet:null,toast:'',draft:'',draftLink:''};
 
 /* ---------- logica attivita ---------- */
 function inBand(b,m){return b.a<=b.b?(m>=b.a&&m<=b.b):(m>=b.a||m<=b.b);}
@@ -413,9 +424,10 @@ function dueUntil(end){
   out.sort(function(x,z){return x.dn-z.dn;});
   return out;
 }
-function statPanel(wk,nx,mo,sel){
+function statPanel(wk,nx,mo,m2,sel){
   if(!sel)return '';
-  var list=sel==='week'?wk:(sel==='next'?nx:mo),title=sel==='week'?'Attività della settimana':(sel==='next'?'Attività della prossima settimana':'Attività del mese di '+fmt(T,{month:'long'}));
+  if(sel==='all')return monthsSection();
+  var list=sel==='week'?wk:(sel==='next'?nx:(sel==='month2'?m2:mo)),title=sel==='week'?'Attività della settimana':(sel==='next'?'Attività della prossima settimana':'Attività del mese di '+fmt(sel==='month2'?dnOf(yearOf(T),dt(T).getUTCMonth()+1,1):T,{month:'long'}));
   var h='<div class="section" style="margin-top:20px"><p class="eyebrow">'+title+'</p>';
   if(!list.length)return h+'<div class="empty">Nessuna attività in questo periodo.</div></div>';
   h+='<div class="stack" style="gap:8px">'+list.map(function(x){
@@ -441,9 +453,9 @@ function doneBtn(cid,aid,todo,due){
 }
 function monthsSection(){
   var y=yearOf(T),m0=dt(T).getUTCMonth();
-  var all=dueUntil(dnOf(y,m0+4,0));
-  var h='<div class="section"><p class="eyebrow">Prossimi 4 mesi</p><div class="stack">';
-  for(var k=0;k<4;k++){
+  var all=dueUntil(dnOf(y,m0+6,0)),lastM=fmt(dnOf(y,m0+5,1),{month:'long'});
+  var h='<div class="section" style="margin-top:20px"><p class="eyebrow">Da oggi '+(lastM.charAt(0)==='a'?'ad ':'a ')+esc(lastM)+'</p><div class="stack">';
+  for(var k=0;k<6;k++){
     var start=dnOf(y,m0+k,1),end=dnOf(y,m0+k+1,0),mname=fmt(start,{month:'long'});
     var items=all.filter(function(x){return k===0?x.dn<=end:(x.dn>=start&&x.dn<=end);});
     var groups=[],idx={};
@@ -467,19 +479,19 @@ function monthsSection(){
   }
   return h+'</div></div>';
 }
-function effStat(wk,nx,mo){
-  var ord=['week','next','month'],ls={week:wk,next:nx,month:mo};
+function effStat(wk,nx,mo,m2){
+  var ord=['week','next','month','month2','all'],ls={week:wk,next:nx,month:mo,month2:m2,all:[1]};
   var i=Math.max(0,ord.indexOf(UI.stat||'week'));
-  for(var k=i;k<3;k++)if(ls[ord[k]].length)return ord[k];
-  for(var j=0;j<i;j++)if(ls[ord[j]].length)return ord[j];
-  return ord[i];
+  for(var k=i;k<ord.length;k++)if(ls[ord[k]].length)return ord[k];
+  return 'all';
 }
 function viewOggi(){
   var it=todayItems(),n=it.late.length,off=S.classes.filter(function(c){return !c.on;}).length;
   var hr=new Date().getHours(),hello=hr<12?'Buongiorno':(hr<18?'Buon pomeriggio':'Buonasera'),nact=S.classes.filter(function(c){return c.on;}).length;
-  var wk=dueUntil(weekEndDN()),mo=dueUntil(monthEndDN()),nx=dueUntil(weekEndDN()+7).filter(function(x){return x.dn>weekEndDN();}),sel=effStat(wk,nx,mo),monthName=fmt(T,{month:'long'});
+  var wk=dueUntil(weekEndDN()),mo=dueUntil(monthEndDN()),nx=dueUntil(weekEndDN()+7).filter(function(x){return x.dn>weekEndDN();}),m2s=dnOf(yearOf(T),dt(T).getUTCMonth()+1,1),m2=dueUntil(dnOf(yearOf(T),dt(T).getUTCMonth()+2,0)).filter(function(x){return x.dn>=m2s;}),sel=effStat(wk,nx,mo,m2),monthName=fmt(T,{month:'long'}),nextName=fmt(m2s,{month:'long'});
   var h='<section class="hero"><p class="eyebrow">'+esc(dateLine(T))+'</p><h1>'+hello+'</h1>';
-  h+='<p class="sub">'+(n?'Oggi hai '+n+(n===1?' attività da fare.':' attività da fare.'):'Oggi non c’è nulla da fare.')+'</p><div class="stats">'+[['week',wk,'questa settimana'],['next',nx,'prossima settimana'],['month',mo,'mese di '+monthName]].map(function(q){return '<button class="stat'+(sel===q[0]?' on':'')+'" data-a="statOpen" data-v="'+q[0]+'" aria-pressed="'+(sel===q[0])+'"><b>'+q[1].length+'</b><span>'+q[2]+'</span></button>';}).join('')+'</div></section>'+statPanel(wk,nx,mo,sel)+monthsSection();
+  h+='<p class="sub">'+(n?'Oggi hai '+n+(n===1?' attività da fare.':' attività da fare.'):'Oggi non c’è nulla da fare.')+'</p><div class="stats4">'+[['week',wk,'questa settimana'],['next',nx,'prossima settimana'],['month',mo,monthName],['month2',m2,nextName]].map(function(q){return '<button class="stat'+(sel===q[0]?' on':'')+'" data-a="statOpen" data-v="'+q[0]+'" aria-pressed="'+(sel===q[0])+'"><b>'+q[1].length+'</b><span>'+esc(q[2])+'</span></button>';}).join('')+'</div><button class="allb'+(sel==='all'?' on':'')+'" data-a="statOpen" data-v="all" aria-pressed="'+(sel==='all')+'"><span class="l"><b>Tutte le attività pianificate</b><small>prossimi 6 mesi</small></span><span class="chev'+(sel==='all'?' up':'')+'">'+ic('down',20)+'</span></button></section>'+statPanel(wk,nx,mo,m2,sel);
+  var hKeep=h;h=''; /* sezione "Tutte le attività" nascosta per ora: il suo codice scrive in una stringa che viene scartata */
   h+='<div class="section"><p class="eyebrow">Tutte le attività</p><div class="stack">';
   S.classes.forEach(function(c){if(!c.on)return;
     var acts=c.acts.filter(function(a){return a.on!==false;});
@@ -495,6 +507,7 @@ function viewOggi(){
     h+='</div>';
   });
   h+='</div></div>';
+  h=hKeep;
   var recent=S.log.slice(-5).reverse();
   h+='<div class="section"><p class="eyebrow">Registro, ultime svolte</p>';
   if(recent.length){
