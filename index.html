@@ -178,6 +178,21 @@ button.stat.on span{color:var(--rose-soft-ink)}
 .opt:has(input:checked){border-color:var(--rose-line);background:var(--rose-soft)}
 .optt{display:block;font-weight:500}
 .opts{display:block;font-size:13px;line-height:20px;color:var(--ink-muted)}
+/* Note: attività nate da una nota (verde salvia), foto, scelta della scadenza */
+.nc.sage,.arow.sage{background:#E1E6D6;border-color:#B9C5A8}
+.arow.sage{border:1px solid #B9C5A8;border-radius:12px;padding:12px;margin-top:6px}
+.sage .ncl .pn{margin-left:2px;font-weight:600;text-transform:none;letter-spacing:0;font-size:12.5px;color:#344530}
+.sage .pill.ok{background:#F8F5F2}
+.tag{display:inline-flex;align-items:center;gap:4px;padding:2px 10px;border-radius:999px;background:#C9D5B6;color:#2B3D28;font-size:12px;line-height:18px;font-weight:600}
+.sagebox{padding:14px;border:1px solid #B9C5A8;border-radius:12px;background:#EEF1E6}
+.sagebox .lab{margin:0 0 10px;font-size:12px;line-height:16px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#344530}
+.seg{display:flex;flex-wrap:wrap;gap:8px}
+.seg button{min-height:40px;padding:0 14px;border:1px solid var(--line-strong);border-radius:999px;background:var(--surface);font-size:14px}
+.seg button[aria-pressed="true"]{background:#C9D5B6;border-color:#5E8063;color:#2B3D28;font-weight:600}
+.photo{display:flex;align-items:center;gap:12px}
+.thumb{flex:none;width:72px;height:72px;border-radius:12px;object-fit:cover;background:var(--sunken)}
+.photo .ph-btns{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+label.btn input[type=file]{display:none}
 </style>
 </head>
 <body>
@@ -241,7 +256,7 @@ function load(){try{var r=localStorage.getItem(KEY);if(r){var o=JSON.parse(r);if
 function save(){try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}}
 var S=load()||seed();S.todo=S.todo||[];
 var T=todayDN();
-var UI={open:{},months:{0:true},stat:null,tab:'oggi',cls:null,edit:false,confirm:null,y:yearOf(T),m:dt(T).getUTCMonth(),sel:T,sheet:null,toast:'',draft:'',draftLink:''};
+var UI={open:{},months:{0:true},stat:null,tab:'oggi',cls:null,edit:false,confirm:null,y:yearOf(T),m:dt(T).getUTCMonth(),sel:T,sheet:null,toast:'',draft:'',draftLink:'',draftName:'',draftPhoto:'',draftAct:'',draftOther:'',draftWhen:'14'};
 
 /* ---------- logica attivita ---------- */
 function inBand(b,m){return b.a<=b.b?(m>=b.a&&m<=b.b):(m>=b.a||m<=b.b);}
@@ -316,8 +331,12 @@ function undoLog(id){
   if(a){var rest=S.log.filter(function(x){return x.actId===a.id;}).map(function(x){return x.dn;});a.last=rest.length?Math.max.apply(null,rest):null;}
   save();
 }
+/* attività nate da una nota: voci di S.todo con note:true, mostrate come kind 'n' */
+var GEN={id:'',name:'Generale',color:'#5E8063'};
+function noteItem(td){return {c:classOf(td.clsId)||GEN,a:{id:td.id,name:td.name,note:td.text||'',plant:td.plant||'',bands:[]},dn:td.dn,kind:'n',todo:td};}
 function todayItems(){
   var late=[],soon=[];
+  S.todo.forEach(function(td){if(!td.note)return;var it=noteItem(td);if(td.dn<=T)late.push(it);else if(td.dn<=T+7)soon.push(it);});
   S.classes.forEach(function(c){if(!c.on)return;c.acts.forEach(function(a){
     if(a.on===false)return;
     var d=nextDue(a);
@@ -339,6 +358,7 @@ function monthItems(y,m){
     occurrences(a,A,Bd).forEach(function(o){add(o.dn,{c:c,a:a,dn:o.dn,kind:o.kind,done:false});});
   });});
   S.todo.forEach(function(td){var c=classOf(td.clsId),a=c&&actOf(c,td.actId);if(!c||!a||!c.on||a.on===false)return;if(td.dn>=A&&td.dn<=Bd)add(td.dn,{c:c,a:a,dn:td.dn,kind:'x',done:false,todo:td});});
+  S.todo.forEach(function(td){if(!td.note)return;if(td.dn>=A&&td.dn<=Bd){var it=noteItem(td);it.done=false;add(td.dn,it);}});
   S.log.forEach(function(l){var c=classOf(l.clsId);if(!c||!c.on)return;if(l.dn<A||l.dn>Bd)return;var a=actOf(c,l.actId);if(!a)return;add(l.dn,{c:c,a:a,dn:l.dn,done:true,log:l});});
   return map;
 }
@@ -431,6 +451,7 @@ function dueUntil(end){
     });
   });});
   S.todo.forEach(function(td){var c=classOf(td.clsId),a=c&&actOf(c,td.actId);if(!c||!a||!c.on||a.on===false)return;if(td.dn<=end)out.push({c:c,a:a,dn:td.dn,kind:'x',todo:td});});
+  S.todo.forEach(function(td){if(td.note&&td.dn<=end)out.push(noteItem(td));});
   out.sort(function(x,z){return x.dn-z.dn;});
   return out;
 }
@@ -446,8 +467,8 @@ function statPanel(wk,nx,mo,m2,sel){
     else if(late>0)st='<span class="pill late">In ritardo di '+late+(late===1?' giorno':' giorni')+'</span>';
     else if(late===0)st='<span class="pill rose">Oggi</span>';
     else st='<span class="pill '+(x.dn<=lim?'warn':'ok')+'">'+fmt(x.dn,{weekday:'short',day:'numeric',month:'short'})+'</span>';
-    var per=x.kind==='x'?'':periodText(x.a);
-    return '<div class="nc"><div class="ng"><p class="ncl" style="color:'+clsInk(x.c.color)+'"><span class="nd" style="background:'+x.c.color+'"></span>'+esc(x.c.name)+'</p><p class="nh">'+esc(x.a.name)+'</p><p class="nsm">'+st+(per?'<span>'+esc(per)+'</span>':'')+'</p>'+(x.a.note?'<p class="nnt">'+esc(x.a.note)+'</p>':'')+'</div>'+doneBtn(x.c.id,x.a.id,x.todo,x.dn<=T)+'</div>';
+    var isN=x.kind==='n',per=(x.kind==='x'||isN)?'':periodText(x.a);
+    return '<div class="nc'+(isN?' sage':'')+'"><div class="ng"><p class="ncl" style="color:'+clsInk(x.c.color)+'"><span class="nd" style="background:'+x.c.color+'"></span>'+esc(x.c.name)+(isN&&x.a.plant?' <span class="pn">· '+esc(x.a.plant)+'</span>':'')+'</p><p class="nh">'+esc(x.a.name)+'</p><p class="nsm">'+st+(per?'<span>'+esc(per)+'</span>':'')+(isN?'<span class="tag">Da nota</span>':'')+'</p>'+(x.a.note?'<p class="nnt">'+esc(x.a.note)+'</p>':'')+'</div>'+doneBtn(x.c.id,x.a.id,x.todo,x.dn<=T)+'</div>';
   }).join('')+'</div></div>';
   return h;
 }
@@ -459,6 +480,7 @@ function inkOn(col){
 }
 function doneBtn(cid,aid,todo,due){
   var c=classOf(cid),col=(c&&c.color)||'#8F4A4F';
+  if(todo&&todo.note){col=(c&&c.color)||GEN.color;return '<button class="go" style="background:'+col+';color:'+inkOn(col)+'" aria-label="Azioni sull’attività" title="Azioni" data-a="nactOpen" data-todo="'+todo.id+'">'+ic('right',22)+'</button>';}
   return '<button class="go" style="background:'+col+';color:'+inkOn(col)+'" aria-label="Azioni sull’attività" title="Azioni" data-a="doneOpen" data-c="'+cid+'" data-t="'+aid+'"'+(todo?' data-todo="'+todo.id+'"':'')+'>'+ic('right',22)+'</button>';
 }
 function monthsSection(){
@@ -470,7 +492,7 @@ function monthsSection(){
     var items=all.filter(function(x){return k===0?x.dn<=end:(x.dn>=start&&x.dn<=end);});
     var groups=[],idx={};
     items.forEach(function(x){
-      var key=x.kind==='x'?'x'+x.todo.id:(x.kind==='o'?'o'+x.a.id+x.end:'p'+x.a.id);
+      var key=(x.kind==='x'||x.kind==='n')?x.kind+x.todo.id:(x.kind==='o'?'o'+x.a.id+x.end:'p'+x.a.id);
       var g=idx[key];
       if(!g){g=idx[key]={c:x.c,a:x.a,kind:x.kind,todo:x.todo,end:x.end,dates:[],first:x.dn};groups.push(g);}
       g.dates.push(x.dn);
@@ -482,7 +504,8 @@ function monthsSection(){
       groups.forEach(function(g){
         var when=g.kind==='o'?'entro '+fmt(g.end,{day:'numeric',month:'short'}):g.dates.map(function(d,i){return (d<T&&i===0)?'in ritardo':(d===T?'oggi':fmt(d,{day:'numeric',month:'short'}));}).join(' · ');
         var pc=g.kind==='o'?'warn':(g.first<T?'late':(g.first===T?'rose':(g.first<=weekEndDN()+7?'warn':'ok')));
-        h+='<div class="arow"><div class="ng"><p class="ncl" style="color:'+clsInk(g.c.color)+'"><span class="nd" style="background:'+g.c.color+'"></span>'+esc(g.c.name)+'</p><p class="nh">'+esc(g.a.name)+'</p><p class="nsm"><span class="pill '+pc+'">'+esc(when)+'</span></p>'+(g.a.note?'<p class="nnt">'+esc(g.a.note)+'</p>':'')+'</div>'+doneBtn(g.c.id,g.a.id,g.todo,g.first<=T)+'</div>';
+        var gn=g.kind==='n';
+        h+='<div class="arow'+(gn?' sage':'')+'"><div class="ng"><p class="ncl" style="color:'+clsInk(g.c.color)+'"><span class="nd" style="background:'+g.c.color+'"></span>'+esc(g.c.name)+(gn&&g.a.plant?' <span class="pn">· '+esc(g.a.plant)+'</span>':'')+'</p><p class="nh">'+esc(g.a.name)+'</p><p class="nsm"><span class="pill '+pc+'">'+esc(when)+'</span>'+(gn?'<span class="tag">Da nota</span>':'')+'</p>'+(g.a.note?'<p class="nnt">'+esc(g.a.note)+'</p>':'')+'</div>'+doneBtn(g.c.id,g.a.id,g.todo,g.first<=T)+'</div>';
       });
     }
     h+='</div>';
@@ -552,7 +575,7 @@ function viewCal(){
       var right;
       if(x.done)right=(x.log&&x.log.skipped)?'<span class="pill neutral">Saltata</span>':'<span class="pill ok">Fatto</span>';
       else right=doneBtn(x.c.id,x.a.id,x.todo,x.dn<=T);
-      return '<div class="row" style="padding:12px 0;'+(i?'border-top:1px solid var(--line)':'')+'"><span class="dot" style="background:'+x.c.color+'"></span><div class="grow"><p style="margin:0;font-weight:500">'+esc(x.a.name)+'</p><p class="tiny subtle" style="margin:0">'+esc(x.c.name)+(x.done&&x.log.note?' · '+esc(x.log.note):'')+'</p></div>'+right+'</div>';
+      return '<div class="row" style="padding:12px 0;'+(i?'border-top:1px solid var(--line)':'')+'"><span class="dot" style="background:'+x.c.color+'"></span><div class="grow"><p style="margin:0;font-weight:500">'+esc(x.a.name)+'</p><p class="tiny subtle" style="margin:0">'+esc(x.c.name)+(x.a.plant?' · '+esc(x.a.plant):'')+(x.done&&x.log.note?' · '+esc(x.log.note):'')+'</p></div>'+right+'</div>';
     }).join('')+'</div>';
   }
   h+='</div>';
@@ -610,16 +633,59 @@ function viewClasse(c){
   return h;
 }
 
+/* ---------- note: foto (IndexedDB, restano fuori dal backup) ---------- */
+var PH={},IDB=null;
+function idb(cb){
+  if(IDB)return cb(IDB);
+  try{var r=indexedDB.open('plantq-photos',1);r.onupgradeneeded=function(){r.result.createObjectStore('p');};r.onsuccess=function(){IDB=r.result;cb(IDB);};r.onerror=function(){cb(null);};}catch(e){cb(null);}
+}
+function photoPut(id,data,cb){idb(function(d){if(!d)return cb(false);try{var tx=d.transaction('p','readwrite');tx.objectStore('p').put(data,id);tx.oncomplete=function(){cb(true);};tx.onerror=function(){cb(false);};}catch(e){cb(false);}});}
+function photoGet(id,cb){idb(function(d){if(!d)return cb(null);try{var q=d.transaction('p','readonly').objectStore('p').get(id);q.onsuccess=function(){cb(q.result||null);};q.onerror=function(){cb(null);};}catch(e){cb(null);}});}
+function photoDel(id){idb(function(d){if(!d)return;try{d.transaction('p','readwrite').objectStore('p').delete(id);}catch(e){}});delete PH[id];}
+function hydrate(){document.querySelectorAll('img[data-ph]').forEach(function(im){var id=im.getAttribute('data-ph');if(PH[id]){im.src=PH[id];return;}photoGet(id,function(v){if(v){PH[id]=v;im.src=v;}});});}
+function shrink(file,cb){
+  var fr=new FileReader();
+  fr.onload=function(){var im=new Image();im.onload=function(){var s=Math.min(1,1000/Math.max(im.width,im.height)),cv=document.createElement('canvas');cv.width=Math.max(1,Math.round(im.width*s));cv.height=Math.max(1,Math.round(im.height*s));cv.getContext('2d').drawImage(im,0,0,cv.width,cv.height);cb(cv.toDataURL('image/jpeg',0.75));};im.onerror=function(){cb(null);};im.src=fr.result;};
+  fr.onerror=function(){cb(null);};fr.readAsDataURL(file);
+}
+
+/* ---------- note: attività proponibili e scadenze ---------- */
+var NACTS=['Concimare','Trattamento antiparassitario','Potatura','Rinvaso','Ricovero dal freddo','Rimettere all’aperto','Pulire le foglie','Semina o trapianto','Cambiare la soluzione nutritiva','Altro'];
+function whenOpts(){
+  var o=[['7','1 settimana'],['14','2 settimane'],['30','1 mese']],y=yearOf(T),m0=dt(T).getUTCMonth();
+  for(var k=1;k<=6;k++)o.push(['M'+k,fmt(dnOf(y,m0+k,1),{month:'long'})]);
+  return o;
+}
+function whenDN(v){
+  if(v.charAt(0)==='M'){var k=+v.slice(1);return dnOf(yearOf(T),dt(T).getUTCMonth()+k+1,0);}
+  return T+(+v);
+}
+
 function viewNote(){
   var h='<p class="eyebrow">Quaderno</p><h1>Note</h1><p class="sub">Scrivi o detta una nota. Per dettare, tocca il microfono sulla tastiera dell’iPhone.</p>';
-  h+='<div class="section card stack"><div class="field"><label for="noteText">Nota</label><textarea class="input" id="noteText" placeholder="Es. Il limone ha le foglie gialle. Concimare ogni 10 giorni in primavera.">'+esc(UI.draft)+'</textarea></div>';
-  h+='<div class="field"><label for="noteLink">Riferita a</label><select class="input" id="noteLink"><option value="">Generale</option><optgroup label="Classi">'+S.classes.map(function(c){return '<option value="c:'+c.id+'"'+(UI.draftLink==='c:'+c.id?' selected':'')+'>'+esc(c.name)+'</option>';}).join('')+'</optgroup>';
-  h+='</select></div><button class="btn primary" data-a="noteSave">Salva nota</button>';
+  h+='<div class="section card stack">';
+  h+='<div class="field"><label for="noteName">Nome della pianta</label><input class="input" id="noteName" placeholder="Es. Limone del balcone" autocomplete="off" value="'+esc(UI.draftName||'')+'"></div>';
+  h+='<div class="field"><label for="noteLink">Classe</label><select class="input" id="noteLink"><option value="">Generale</option>'+S.classes.map(function(c){return '<option value="c:'+c.id+'"'+(UI.draftLink==='c:'+c.id?' selected':'')+'>'+esc(c.name)+'</option>';}).join('')+'</select></div>';
+  h+='<div class="field"><label for="noteText">Nota</label><textarea class="input" id="noteText" style="min-height:84px" placeholder="Es. Foglie gialle sui rami bassi, terriccio molto compatto.">'+esc(UI.draft)+'</textarea></div>';
+  h+='<div class="photo">'+(UI.draftPhoto?'<img class="thumb" alt="Foto della nota" src="'+UI.draftPhoto+'">':'')+'<div class="ph-btns"><label class="btn small">'+'<input type="file" accept="image/*" id="notePhoto">'+ic('plus',18)+(UI.draftPhoto?'Cambia foto':'Aggiungi foto')+'</label>'+(UI.draftPhoto?'<button class="btn ghost small" data-a="notePhotoDel">Rimuovi</button>':'')+'</div></div>';
+  if(UI.draftPhoto)h+='<p class="hint" style="margin-top:-4px">La foto viene rimpicciolita e salvata solo su questo telefono (non nel backup).</p>';
+  h+='<div class="sagebox"><p class="lab">Attività da questa nota</p><div class="field"><label for="noteAct">Attività</label><select class="input" id="noteAct"><option value="">Nessuna attività</option>'+NACTS.map(function(a){return '<option value="'+esc(a)+'"'+(UI.draftAct===a?' selected':'')+'>'+esc(a)+'</option>';}).join('')+'</select></div>';
+  if(UI.draftAct==='Altro')h+='<div class="field" style="margin-top:12px"><label for="noteOther">Nome dell’attività</label><input class="input" id="noteOther" autocomplete="off" placeholder="Es. Spostare al sole" value="'+esc(UI.draftOther||'')+'"></div>';
+  if(UI.draftAct)h+='<div class="field" style="margin-top:12px"><label>Da fare entro</label><div class="seg">'+whenOpts().map(function(w){return '<button type="button" data-a="noteWhen" data-v="'+w[0]+'" aria-pressed="'+(UI.draftWhen===w[0])+'">'+esc(w[1])+'</button>';}).join('')+'</div></div>';
+  h+='</div>';
+  h+='<button class="btn primary" data-a="noteSave">Salva nota</button>';
   h+='<p class="hint">Per ora l’analisi riconosce frasi come “concimare ogni 10 giorni in primavera” e ti propone la modifica. Non cambia nulla finché non confermi.</p></div>';
   h+='<div class="section"><p class="eyebrow">Note salvate</p><div class="stack">';
   if(!S.notes.length)h+='<div class="empty">Nessuna nota. La prima che salvi compare qui.</div>';
   S.notes.slice().reverse().forEach(function(n){
-    h+='<div class="card"><p style="margin:0;white-space:pre-wrap;overflow-wrap:anywhere">'+esc(n.text)+'</p><div class="row" style="margin-top:10px;flex-wrap:wrap;justify-content:space-between"><div class="row" style="gap:8px;flex-wrap:wrap"><span class="pill neutral">'+esc(noteLabel(n.link))+'</span><span class="tiny subtle">'+fmt(n.dn,{day:'numeric',month:'long'})+'</span></div><button class="btn ghost small" data-a="noteDel" data-id="'+n.id+'">Elimina</button></div>';
+    var td=S.todo.find(function(x){return x.note&&x.noteId===n.id;});
+    h+='<div class="card"><div class="row" style="align-items:flex-start"><div class="grow">'+(n.plant?'<h3>'+esc(n.plant)+'</h3>':'')+'<div class="row" style="gap:8px;flex-wrap:wrap;'+(n.plant?'margin-top:4px':'')+'"><span class="pill neutral">'+esc(noteLabel(n.link))+'</span><span class="tiny subtle">'+fmt(n.dn,{day:'numeric',month:'long'})+'</span></div></div>'+(n.photo?'<img class="thumb" style="width:64px;height:64px" alt="Foto della nota" data-ph="'+n.photo+'">':'')+'</div>';
+    h+='<p style="margin:10px 0 0;white-space:pre-wrap;overflow-wrap:anywhere">'+esc(n.text)+'</p>';
+    if(n.act){
+      var tx=td?'Attività: '+n.act+' · entro '+fmt(td.dn,{day:'numeric',month:'short'}):(n.actState==='fatta'?'Attività fatta: '+n.act:'Attività saltata: '+n.act);
+      h+='<div style="margin-top:10px"><span class="tag">'+esc(tx)+'</span></div>';
+    }
+    h+='<div class="row" style="margin-top:10px;justify-content:flex-end"><button class="btn ghost small" data-a="noteDel" data-id="'+n.id+'">Elimina</button></div>';
     if(n.prop&&n.state==='proposta')h+='<div class="proposal"><p class="eyebrow" style="color:var(--rose-soft-ink)">Modifica proposta</p><p style="margin:4px 0 12px;font-weight:500">'+esc(n.prop.text)+'</p><div class="row" style="flex-wrap:wrap"><button class="btn primary small" data-a="propYes" data-id="'+n.id+'">Applica</button><button class="btn small" data-a="propNo" data-id="'+n.id+'">Ignora</button></div></div>';
     else if(n.state==='applicata')h+='<p class="small" style="margin:10px 0 0;color:var(--success-ink)">Modifica applicata: '+esc(n.prop.text)+'</p>';
     else if(n.state==='ignorata')h+='<p class="small subtle" style="margin:10px 0 0">Proposta ignorata.</p>';
@@ -661,6 +727,14 @@ function viewSheet(){
       '<div class="field" data-modes="done treat"><label for="doneNote">Nota (facoltativa)</label><input class="input" id="doneNote" placeholder="Es. trovata cocciniglia" autocomplete="off"></div>'+
       '<div class="field" data-modes="snooze" hidden><label for="snoozeDays">Rinvia di</label><select class="input" id="snoozeDays"><option value="7">1 settimana</option><option value="14">2 settimane</option><option value="30">1 mese</option></select></div>'+
       '<div class="row" style="flex-wrap:wrap"><button class="btn primary grow" data-a="actSave" data-c="'+ac.id+'" data-t="'+aa.id+'"'+(s.todo?' data-todo="'+s.todo+'"':'')+'>Conferma</button><button class="btn" data-a="sheetClose">Annulla</button></div></div>';
+  }else if(s.type==='nact'){
+    var nt=S.todo.find(function(x){return x.id===s.todo;});if(!nt){UI.sheet=null;return '';}
+    var ncl=classOf(nt.clsId),nd=dt(T),isoN=nd.getUTCFullYear()+'-'+String(nd.getUTCMonth()+1).padStart(2,'0')+'-'+String(nd.getUTCDate()).padStart(2,'0');
+    inner='<h2 id="shTitle">'+esc(nt.name)+'</h2><p class="small muted" style="margin:2px 0 16px">'+esc((nt.plant||'Da nota')+(ncl?' · '+ncl.name:''))+'</p>'+
+      '<div role="radiogroup" aria-label="Cosa vuoi fare">'+optHtml('done','Fatta','La segno come fatta',true)+optHtml('snooze','Rinvia','La sposto più avanti',false)+optHtml('skip','Salta l’attività','La tolgo dal calendario',false)+'</div>'+
+      '<div class="stack" style="margin-top:12px"><div class="field" data-modes="done"><label for="doneDate">Data</label><input class="input" type="date" id="doneDate" value="'+isoN+'" max="'+isoN+'"></div>'+
+      '<div class="field" data-modes="snooze" hidden><label for="snoozeDays">Rinvia di</label><select class="input" id="snoozeDays"><option value="7">1 settimana</option><option value="14">2 settimane</option><option value="30">1 mese</option></select></div>'+
+      '<div class="row" style="flex-wrap:wrap"><button class="btn primary grow" data-a="nactSave" data-todo="'+nt.id+'">Conferma</button><button class="btn" data-a="sheetClose">Annulla</button></div></div>';
   }else if(s.type==='restore'){
     inner='<h2 id="shTitle">Backup dei dati</h2><p class="small muted" style="margin:2px 0 16px">'+(s.prefill?'Copia tutto il testo qui sotto e conservalo in un’app di note.':'Incolla qui il testo del backup. I dati attuali verranno sostituiti.')+'</p><div class="stack"><div class="field"><label for="restoreText">Testo del backup</label><textarea class="input" id="restoreText" style="min-height:140px;font-size:14px">'+esc(s.prefill||'')+'</textarea><p class="hint" id="restoreErr" style="color:var(--error-ink)" hidden>Il testo non è un backup valido.</p></div><div class="row" style="flex-wrap:wrap">'+(s.prefill?'':'<button class="btn primary grow" data-a="restoreSave">Ripristina</button>')+'<button class="btn'+(s.prefill?' primary grow':'')+'" data-a="sheetClose">'+(s.prefill?'Chiudi':'Annulla')+'</button></div></div>';
   }else if(s.type==='newcls'){
@@ -682,6 +756,7 @@ function render(){
   var v=UI.tab==='oggi'?viewOggi():UI.tab==='cal'?viewCal():UI.tab==='classi'?viewClassi():viewNote();
   appEl.innerHTML='<header class="brand"><img src="'+LOGO+'" alt="PlantQ" width="140"></header>'+v;
   layer.innerHTML=viewSheet()+tabbar()+(UI.toast?'<div class="toast" role="status">'+esc(UI.toast)+'</div>':'');
+  hydrate();
 }
 function toast(t){UI.toast=t;render();clearTimeout(toastTimer);toastTimer=setTimeout(function(){UI.toast='';render();},2400);}
 function go(tab){UI.tab=tab;UI.cls=null;UI.edit=false;UI.confirm=null;window.scrollTo(0,0);}
@@ -764,13 +839,37 @@ var H={
  resetNo:function(){UI.confirm=null;render();},
  resetYes:function(){S=seed();save();UI.confirm=null;toast('Classi iniziali ripristinate.');},
  noteSave:function(){
-   var tx=document.getElementById('noteText').value.trim(),link=document.getElementById('noteLink').value;if(!tx)return;
-   var n={id:uid(),text:tx,link:link,dn:T,state:'salvata'},r=analyze(tx,link);
+   var tx=document.getElementById('noteText').value.trim(),link=document.getElementById('noteLink').value;
+   var nm=document.getElementById('noteName').value.trim();
+   if(!tx&&!UI.draftPhoto)return;
+   var n={id:uid(),text:tx,link:link,plant:nm,dn:T,state:'salvata'},r=tx?analyze(tx,link):null,extra='';
    if(r&&r.error)n.err=r.error;else if(r){n.prop=r;n.state='proposta';}
-   S.notes.push(n);save();UI.draft='';UI.draftLink='';
-   toast(n.prop?'Nota salvata. Ho preparato una modifica da confermare.':'Nota salvata.');
+   if(UI.draftPhoto){n.photo=uid();PH[n.photo]=UI.draftPhoto;photoPut(n.photo,UI.draftPhoto,function(ok){if(!ok){n.photo=null;save();toast('Nota salvata, ma la foto non si è potuta salvare.');}});}
+   if(UI.draftAct){
+     var an=UI.draftAct==='Altro'?((UI.draftOther||'').trim()||'Altro'):UI.draftAct,due=whenDN(UI.draftWhen||'14');
+     S.todo.push({id:uid(),note:true,noteId:n.id,clsId:link?link.split(':')[1]:'',name:an,plant:nm,text:tx,dn:due});
+     n.act=an;n.actState='attiva';extra=' Attività pianificata entro '+fmt(due,{day:'numeric',month:'long'})+'.';
+   }
+   S.notes.push(n);save();UI.draft='';UI.draftLink='';UI.draftName='';UI.draftPhoto='';UI.draftAct='';UI.draftOther='';UI.draftWhen='14';
+   toast(n.prop?'Nota salvata. Ho preparato una modifica da confermare.':'Nota salvata.'+extra);
  },
- noteDel:function(t){S.notes=S.notes.filter(function(n){return n.id!==t.dataset.id;});save();render();},
+ noteWhen:function(t){UI.draftWhen=t.dataset.v;render();},
+ notePhotoDel:function(){UI.draftPhoto='';render();},
+ nactOpen:function(t){UI.sheet={type:'nact',todo:t.dataset.todo};render();},
+ nactSave:function(t){
+   var td=S.todo.find(function(x){return x.id===t.dataset.todo;});if(!td)return;
+   var n=S.notes.find(function(x){return x.id===td.noteId;}),mr=document.querySelector('input[name="mode"]:checked'),mode=mr?mr.value:'done',msg='';
+   if(mode==='snooze'){var d=+document.getElementById('snoozeDays').value;td.dn=Math.max(td.dn,T)+d;msg='Rinviata di '+(d===7?'1 settimana':(d===14?'2 settimane':'1 mese'))+'.';}
+   else{
+     var de=document.getElementById('doneDate'),dnv=T;
+     if(mode==='done'&&de&&de.value){var p=de.value.split('-');dnv=Math.min(T,dnOf(+p[0],+p[1]-1,+p[2]));}
+     removeTodo(td.id);
+     if(n){n.actState=mode==='skip'?'saltata':'fatta';n.actDn=dnv;}
+     msg=mode==='skip'?'Attività tolta dal calendario.':'Attività segnata come fatta.';
+   }
+   save();UI.sheet=null;toast(msg);
+ },
+ noteDel:function(t){var n=S.notes.find(function(x){return x.id===t.dataset.id;});if(n&&n.photo)photoDel(n.photo);S.todo=S.todo.filter(function(x){return !(x.note&&x.noteId===t.dataset.id);});S.notes=S.notes.filter(function(x){return x.id!==t.dataset.id;});save();render();},
  propYes:function(t){var n=S.notes.find(function(x){return x.id===t.dataset.id;});applyProposal(n.prop);n.state='applicata';save();toast('Modifica applicata a classi e calendario.');},
  propNo:function(t){var n=S.notes.find(function(x){return x.id===t.dataset.id;});n.state='ignorata';save();render();}
 };
@@ -780,11 +879,15 @@ document.addEventListener('click',function(e){
 });
 document.addEventListener('input',function(e){
   if(e.target.id==='noteText')UI.draft=e.target.value;
+  else if(e.target.id==='noteName')UI.draftName=e.target.value;
+  else if(e.target.id==='noteOther')UI.draftOther=e.target.value;
 });
 document.addEventListener('change',function(e){
   var t=e.target;
   if(t.name==='mode'){var mv=t.value;document.querySelectorAll('[data-modes]').forEach(function(e){e.hidden=e.dataset.modes.split(' ').indexOf(mv)<0;});return;}
   if(t.id==='noteLink'){UI.draftLink=t.value;return;}
+  if(t.id==='noteAct'){UI.draftAct=t.value;render();return;}
+  if(t.id==='notePhoto'){var f=t.files&&t.files[0];if(!f)return;shrink(f,function(d){if(d){UI.draftPhoto=d;render();}else toast('Non riesco a leggere questa foto.');});return;}
   var k=t.dataset&&t.dataset.c;if(!k||!t.dataset.k)return;
   if(k==='clsEnv'){
     var cc=classOf(t.dataset.k),ci=document.getElementById('envI'),ce=document.getElementById('envE');
